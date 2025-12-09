@@ -54,7 +54,7 @@ const AddExpenses = () => {
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text'
           }}>
-            New Entry (Simple)
+            New Entry
           </h1>
           <p className="text-body" style={{ color: '#94a3b8' }}>
             Add a new expense to track your spending
