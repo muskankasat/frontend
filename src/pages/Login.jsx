@@ -5,13 +5,13 @@ import { authAPI } from '../services/Api';
 
 function Login({ onLogin }) {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async () => {
-    if (!username || !password) {
+    if (!email || !password) {
       setError('Please fill in all fields');
       return;
     }
@@ -20,7 +20,7 @@ function Login({ onLogin }) {
     setError('');
 
     try {
-      const response = await authAPI.login(username, password);
+      const response = await authAPI.login(email, password);
       
       // Store token in localStorage
       localStorage.setItem('token', response.token);
@@ -121,11 +121,11 @@ function Login({ onLogin }) {
             Username <span style={{ color: '#3b82f6' }}>*</span>
           </label>
           <input
-            type="text"
-            placeholder="Enter your username"
-            value={username}
+            type="email"
+            placeholder="Enter your email"
+            value={email}
             onChange={(e) => {
-              setUsername(e.target.value);
+              setEmail(e.target.value);
               setError('');
             }}
             disabled={loading}
@@ -175,7 +175,7 @@ function Login({ onLogin }) {
               color: 'white',
               opacity: loading ? 0.6 : 1
             }}
-            onKeyPress={(e) => e.key === 'Enter' && username && !loading && handleSubmit()}
+            onKeyPress={(e) => e.key === 'Enter' && email && !loading && handleSubmit()}
           />
         </div>
 
