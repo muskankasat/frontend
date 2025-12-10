@@ -90,18 +90,28 @@ export const expenseAPI = {
     };
   },
 
-  // Upload image - MOCK
+  // Upload image
   uploadImage: async (file) => {
-    console.log('Image upload (will be sent to backend):', file.name);
-    // Simulate upload
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          imageUrl: URL.createObjectURL(file)
-        });
-      }, 1000);
-    });
-  },
+  const token = getAuthToken();
+  console.log('Token present:', !!token);
+
+  if (!token) {
+    throw new Error('No authentication token found. Please login first.');
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch("https://ai-finance-tracker-backend-gbum.onrender.com/api/vision/upload-bill", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`  // ✅ backticks used
+    },
+    body: formData
+  });
+
+  return handleResponse(response);
+},
 
   // Process text entry - MOCK
   processTextEntry: async (text) => {
@@ -216,5 +226,22 @@ export const insightsAPI = {
         }
       ]
     };
+  },
+};
+
+// AI Chat API
+export const aiChatAPI = {
+  // Send message to AI
+  sendMessage: async (message) => {
+    const response = await fetch(`https://ai-finance-tracker-backend-gbum.onrender.com/llm/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getAuthToken()}`,
+      },
+      body: JSON.stringify({ message }),
+      credentials: 'include',
+    });
+    return handleResponse(response);
   },
 };
