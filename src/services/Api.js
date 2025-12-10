@@ -135,7 +135,7 @@ export const expenseAPI = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ paragraph }),
+      body: JSON.stringify({ "paragraph": paragraph }),
     });
 
     // Expect the backend to return a JSON object like:
