@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { expenseAPI } from '../services/Api';
 
 const AddExpenses = () => {
   const [amount, setAmount] = useState('');
@@ -7,6 +8,10 @@ const AddExpenses = () => {
   const [notes, setNotes] = useState('');
   const [textEntry, setTextEntry] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const categories = [
     'Travel',
@@ -19,6 +24,7 @@ const AddExpenses = () => {
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setImageFile(file);
       const reader = new FileReader();
       reader.onload = (e) => {
         setSelectedImage(e.target.result);
@@ -27,20 +33,69 @@ const AddExpenses = () => {
     }
   };
 
-  const handleAddExpense = () => {
-    console.log('Adding expense:', {
-      amount,
-      category,
-      date,
-      notes,
-      textEntry
-    });
-    setAmount('');
-    setCategory('');
-    setDate('');
-    setNotes('');
-    setTextEntry('');
-    setSelectedImage(null);
+  const handleAddExpense = async () => {
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      let imageUrl = null;
+
+      // Upload image if selected
+      if (imageFile) {
+        const imageResponse = await expenseAPI.uploadImage(imageFile);
+        imageUrl = imageResponse.imageUrl;
+      }
+
+      // Process text entry if provided
+      if (textEntry && !amount) {
+        const processedData = await expenseAPI.processTextEntry(textEntry);
+        // Use AI-processed data
+        const expenseData = {
+          amount: processedData.amount || amount,
+          category: processedData.category || category,
+          date: processedData.date || date,
+          notes: processedData.notes || notes,
+          imageUrl
+        };
+        await expenseAPI.addExpense(expenseData);
+      } else {
+        // Regular expense entry
+        if (!amount || !category || !date) {
+          setError('Please fill in amount, category, and date');
+          setLoading(false);
+          return;
+        }
+
+        const expenseData = {
+          amount: parseFloat(amount),
+          category,
+          date,
+          notes,
+          imageUrl
+        };
+        await expenseAPI.addExpense(expenseData);
+      }
+
+      setSuccess('Expense added successfully!');
+      
+      // Reset form
+      setTimeout(() => {
+        setAmount('');
+        setCategory('');
+        setDate('');
+        setNotes('');
+        setTextEntry('');
+        setSelectedImage(null);
+        setImageFile(null);
+        setSuccess('');
+      }, 2000);
+
+    } catch (err) {
+      setError(err.message || 'Failed to add expense');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -69,6 +124,38 @@ const AddExpenses = () => {
             Add New Expense
           </h2>
 
+          {/* Success Message */}
+          {success && (
+            <div style={{
+              padding: '0.875rem',
+              background: 'rgba(16, 185, 129, 0.1)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              borderRadius: '10px',
+              color: '#10b981',
+              marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
+              fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
+              textAlign: 'center'
+            }}>
+              {success}
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div style={{
+              padding: '0.875rem',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '10px',
+              color: '#ef4444',
+              marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
+              fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
+              textAlign: 'center'
+            }}>
+              {error}
+            </div>
+          )}
+
           <div className="grid-2" style={{ marginBottom: 'clamp(1rem, 3vw, 1.5rem)' }}>
             <div>
               <label className="text-small" style={{
@@ -84,6 +171,7 @@ const AddExpenses = () => {
                 placeholder="0.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                disabled={loading}
                 style={{
                   width: '100%',
                   padding: 'clamp(0.75rem, 2vw, 0.875rem) 1rem',
@@ -93,7 +181,8 @@ const AddExpenses = () => {
                   color: 'white',
                   fontSize: 'clamp(0.9rem, 2vw, 1rem)',
                   outline: 'none',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  opacity: loading ? 0.6 : 1
                 }}
               />
             </div>
@@ -110,6 +199,7 @@ const AddExpenses = () => {
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
+                disabled={loading}
                 style={{
                   width: '100%',
                   padding: 'clamp(0.75rem, 2vw, 0.875rem) 1rem',
@@ -120,7 +210,8 @@ const AddExpenses = () => {
                   fontSize: 'clamp(0.9rem, 2vw, 1rem)',
                   outline: 'none',
                   cursor: 'pointer',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  opacity: loading ? 0.6 : 1
                 }}
               >
                 <option value="" disabled>Select category</option>
@@ -146,6 +237,7 @@ const AddExpenses = () => {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
+              disabled={loading}
               style={{
                 width: '100%',
                 padding: 'clamp(0.75rem, 2vw, 0.875rem) 1rem',
@@ -156,7 +248,8 @@ const AddExpenses = () => {
                 fontSize: 'clamp(0.9rem, 2vw, 1rem)',
                 outline: 'none',
                 boxSizing: 'border-box',
-                colorScheme: 'dark'
+                colorScheme: 'dark',
+                opacity: loading ? 0.6 : 1
               }}
             />
           </div>
@@ -175,6 +268,7 @@ const AddExpenses = () => {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
+              disabled={loading}
               style={{
                 width: '100%',
                 padding: 'clamp(0.75rem, 2vw, 0.875rem) 1rem',
@@ -186,7 +280,8 @@ const AddExpenses = () => {
                 outline: 'none',
                 resize: 'vertical',
                 fontFamily: 'inherit',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                opacity: loading ? 0.6 : 1
               }}
             />
           </div>
@@ -210,13 +305,14 @@ const AddExpenses = () => {
               color: '#e2e8f0',
               fontWeight: '500'
             }}>
-              Add text entry
+              Add text entry (AI will process)
             </label>
             <textarea
               placeholder="Describe your expense in detail..."
               value={textEntry}
               onChange={(e) => setTextEntry(e.target.value)}
               rows={4}
+              disabled={loading}
               style={{
                 width: '100%',
                 padding: 'clamp(0.75rem, 2vw, 0.875rem) 1rem',
@@ -228,7 +324,8 @@ const AddExpenses = () => {
                 outline: 'none',
                 resize: 'vertical',
                 fontFamily: 'inherit',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                opacity: loading ? 0.6 : 1
               }}
             />
           </div>
@@ -259,17 +356,19 @@ const AddExpenses = () => {
               borderRadius: '10px',
               padding: '2rem',
               textAlign: 'center',
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               transition: 'all 0.3s',
-              background: selectedImage ? 'rgba(15, 23, 42, 0.3)' : 'rgba(15, 23, 42, 0.5)'
+              background: selectedImage ? 'rgba(15, 23, 42, 0.3)' : 'rgba(15, 23, 42, 0.5)',
+              opacity: loading ? 0.6 : 1
             }}
-            onClick={() => document.getElementById('imageUpload').click()}
+            onClick={() => !loading && document.getElementById('imageUpload').click()}
             >
               <input
                 id="imageUpload"
                 type="file"
                 accept="image/*"
                 onChange={handleImageUpload}
+                disabled={loading}
                 style={{ display: 'none' }}
               />
               {selectedImage ? (
@@ -298,23 +397,25 @@ const AddExpenses = () => {
 
           <button
             onClick={handleAddExpense}
+            disabled={loading}
             style={{
               width: '100%',
               padding: 'clamp(0.875rem, 2.5vw, 1rem)',
-              background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+              background: loading ? 'rgba(59, 130, 246, 0.3)' : 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
               color: 'white',
               border: 'none',
               borderRadius: '10px',
               fontSize: 'clamp(1rem, 2.5vw, 1.1rem)',
               fontWeight: '600',
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               transition: 'transform 0.2s',
-              marginTop: '1rem'
+              marginTop: '1rem',
+              opacity: loading ? 0.6 : 1
             }}
-            onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
+            onMouseOver={(e) => !loading && (e.target.style.transform = 'translateY(-2px)')}
             onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
           >
-            Add Expense
+            {loading ? 'Adding Expense...' : 'Add Expense'}
           </button>
         </div>
       </div>
