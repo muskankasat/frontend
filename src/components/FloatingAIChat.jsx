@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-// import { aiChatAPI } from './services/Api'; 
+import { aiChatAPI } from '../services/Api'; 
 
 function FloatingAIChat() {
   const [isOpen, setIsOpen] = useState(false);
