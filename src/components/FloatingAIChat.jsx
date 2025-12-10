@@ -63,7 +63,8 @@ function FloatingAIChat() {
 
     try {
       const aiResponse = await aiChatAPI.sendMessage(messageToSend);
-      setMessages(prev => [...prev, { text: aiResponse, sender: 'ai' }]);
+      // setMessages(prev => [...prev, { text: aiResponse, sender: 'ai' }]);
+      setMessages(prev => [...prev,{ text: aiResponse.response, sender: 'ai' }]);
     } catch (err) {
       setMessages(prev => [...prev, { text: "Sorry, couldn't fetch response.", sender: 'ai' }]);
     }

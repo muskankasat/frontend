@@ -232,16 +232,17 @@ export const insightsAPI = {
 // AI Chat API
 export const aiChatAPI = {
   sendMessage: async (message) => {
+    const token = getAuthToken();
+
     const response = await fetch(
       'https://ai-finance-tracker-backend-gbum.onrender.com/llm/query',
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`,
+          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ message }),
-        credentials: 'include',
+        body: JSON.stringify({ query: message }),
       }
     );
 
