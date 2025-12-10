@@ -54,7 +54,7 @@ const AddExpenses = () => {
         const expenseData = {
           amount: processedData.amount || amount,
           category: processedData.category || category,
-          date: processedData.date || date,
+          date: processedData.date ? new Date(processedData.date).toISOString() : date ? new Date(date).toISOString() : new Date().toISOString(),
           notes: processedData.notes || notes,
           imageUrl
         };
@@ -67,10 +67,13 @@ const AddExpenses = () => {
           return;
         }
 
+        // Convert date to ISO timestamp
+        const isoDate = new Date(date).toISOString();
+
         const expenseData = {
           amount: parseFloat(amount),
           category,
-          date,
+          date: isoDate,
           notes,
           imageUrl
         };
