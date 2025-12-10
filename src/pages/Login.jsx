@@ -23,8 +23,9 @@ function Login({ onLogin }) {
       const response = await authAPI.login(email, password);
       
       // Store token in localStorage
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      localStorage.setItem('token', response.access_token);
+      localStorage.setItem('user_id', response.user_id);
+      localStorage.setItem('public_code', response.public_code);
       
       if (onLogin) {
         onLogin();
@@ -118,10 +119,10 @@ function Login({ onLogin }) {
             fontWeight: '500',
             marginBottom: '0.5rem'
           }}>
-            Username <span style={{ color: '#3b82f6' }}>*</span>
+            Email <span style={{ color: '#3b82f6' }}>*</span>
           </label>
           <input
-            type="email"
+            type="text"
             placeholder="Enter your email"
             value={email}
             onChange={(e) => {
@@ -190,11 +191,11 @@ function Login({ onLogin }) {
 
         <button
           onClick={handleSubmit}
-          disabled={!username || !password || loading}
+          disabled={!email || !password || loading}
           style={{
             width: '100%',
             padding: 'clamp(0.875rem, 2.5vw, 1rem)',
-            background: username && password && !loading
+            background: email && password && !loading
               ? 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)' 
               : 'rgba(59, 130, 246, 0.3)',
             color: 'white',
@@ -202,10 +203,10 @@ function Login({ onLogin }) {
             borderRadius: '10px',
             fontSize: 'clamp(1rem, 2.5vw, 1.1rem)',
             fontWeight: '600',
-            cursor: username && password && !loading ? 'pointer' : 'not-allowed',
+            cursor: email && password && !loading ? 'pointer' : 'not-allowed',
             transition: 'all 0.2s',
             marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
-            opacity: username && password && !loading ? 1 : 0.5
+            opacity: email && password && !loading ? 1 : 0.5
           }}
         >
           {loading ? 'Signing In...' : 'Sign In'}
