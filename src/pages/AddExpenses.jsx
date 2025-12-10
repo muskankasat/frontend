@@ -39,12 +39,12 @@ const AddExpenses = () => {
     setLoading(true);
 
     try {
-      let imageUrl = null;
+      let billImageUrl = null;
 
       // Upload image if selected
       if (imageFile) {
         const imageResponse = await expenseAPI.uploadImage(imageFile);
-        imageUrl = imageResponse.imageUrl;
+        billImageUrl = imageResponse.imageUrl;
       }
 
       // Process text entry if provided
@@ -52,11 +52,15 @@ const AddExpenses = () => {
         const processedData = await expenseAPI.processTextEntry(textEntry);
         // Use AI-processed data
         const expenseData = {
-          amount: processedData.amount || amount,
+          amount: parseFloat(processedData.amount || 0),
           category: processedData.category || category,
-          date: processedData.date ? new Date(processedData.date).toISOString() : date ? new Date(date).toISOString() : new Date().toISOString(),
-          notes: processedData.notes || notes,
-          imageUrl
+          description: processedData.description || notes,
+          timestamp: new Date().toISOString(),
+          source: 'text_entry',
+          metadata: {
+            imageUrl: billImageUrl,
+            originalText: textEntry
+          }
         };
         await expenseAPI.addExpense(expenseData);
       } else {
@@ -67,15 +71,15 @@ const AddExpenses = () => {
           return;
         }
 
-        // Convert date to ISO timestamp
-        const isoDate = new Date(date).toISOString();
-
         const expenseData = {
           amount: parseFloat(amount),
           category,
-          date: isoDate,
-          notes,
-          imageUrl
+          description: notes,
+          timestamp: new Date(date).toISOString(),
+          source: 'manual_entry',
+          metadata: {
+            imageUrl: billImageUrl
+          }
         };
         await expenseAPI.addExpense(expenseData);
       }

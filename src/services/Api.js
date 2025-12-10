@@ -65,7 +65,7 @@ export const expenseAPI = {
 
   // Add new expense
   addExpense: async (expenseData) => {
-    const response = await fetch(`https://ai-finance-tracker-backend-gbum.onrender.com/expenses/add`, {
+    const response = await fetch(`${API_BASE_URL}/expenses`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${getAuthToken()}`,
