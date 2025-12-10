@@ -129,7 +129,7 @@ export const expenseAPI = {
     console.log('Process text (will be sent to backend):', text);
     const token = getAuthToken();
 
-    const response = await fetch(`http://ai-finance-tracker-backend-gbum.onrender.com/api/auto-categorize`, {
+    const response = await fetch(`https://ai-finance-tracker-backend-gbum.onrender.com/api/auto-categorize`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
