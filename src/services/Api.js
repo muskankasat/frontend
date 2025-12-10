@@ -49,46 +49,57 @@ export const authAPI = {
 
 // MOCK DATA - Replace these with real API endpoints when backend is ready
 
-// Expense APIs - USING MOCK DATA FOR NOW
+// Expense APIs
 export const expenseAPI = {
-  // Get all expenses - MOCK
+  // Get all expenses
   getAllExpenses: async () => {
-    // Return mock data since endpoint doesn't exist yet
-    return {
-      expenses: []
-    };
-  },
-
-  // Add new expense - MOCK
-  addExpense: async (expenseData) => {
-    console.log('Expense data (will be sent to backend):', expenseData);
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          message: 'Expense added successfully (mock)',
-          expense: { ...expenseData, _id: Date.now().toString() }
-        });
-      }, 500);
+    const response = await fetch(`${API_BASE_URL}/expenses`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`,
+        'Content-Type': 'application/json',
+      },
     });
+    return handleResponse(response);
   },
 
-  // Update expense - MOCK
-  updateExpense: async (expenseId, expenseData) => {
-    console.log('Update expense (will be sent to backend):', expenseId, expenseData);
-    return {
-      message: 'Expense updated successfully (mock)',
-      expense: { ...expenseData, _id: expenseId }
-    };
+  // Add new expense
+  addExpense: async (expenseData) => {
+    const response = await fetch(`https://ai-finance-tracker-backend-gbum.onrender.com/expenses/add`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(expenseData),
+    });
+    return handleResponse(response);
   },
 
-  // Delete expense - MOCK
-  deleteExpense: async (expenseId) => {
-    console.log('Delete expense (will be sent to backend):', expenseId);
-    return {
-      message: 'Expense deleted successfully (mock)'
-    };
-  },
+  // Update expense
+  // updateExpense: async (expenseId, expenseData) => {
+  //   const response = await fetch(`${API_BASE_URL}/expenses/${expenseId}`, {
+  //     method: 'PUT',
+  //     headers: {
+  //       'Authorization': `Bearer ${getAuthToken()}`,
+  //       'Content-Type': 'application/json',
+  //     },
+  //     body: JSON.stringify(expenseData),
+  //   });
+  //   return handleResponse(response);
+  // },
+
+  // Delete expense
+  // deleteExpense: async (expenseId) => {
+  //   const response = await fetch(`${API_BASE_URL}/expenses/${expenseId}`, {
+  //     method: 'DELETE',
+  //     headers: {
+  //       'Authorization': `Bearer ${getAuthToken()}`,
+  //       'Content-Type': 'application/json',
+  //     },
+  //   });
+  //   return handleResponse(response);
+  // },
 
   // Upload image
   uploadImage: async (file) => {
