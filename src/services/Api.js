@@ -124,16 +124,23 @@ export const expenseAPI = {
   return handleResponse(response);
 },
 
-  // Process text entry - MOCK
+  // Process text entry - calls backend NLP/vision processor
   processTextEntry: async (text) => {
     console.log('Process text (will be sent to backend):', text);
-    // Simple mock processing
-    return {
-      amount: 50,
-      category: 'Others',
-      date: new Date().toISOString().split('T')[0],
-      notes: text
-    };
+    const token = getAuthToken();
+
+    const response = await fetch(`http://ai-finance-tracker-backend-gbum.onrender.com/api/auto-categorize`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ text }),
+    });
+
+    // Expect the backend to return a JSON object like:
+    // { amount, category, description, timestamp, ... }
+    return handleResponse(response);
   },
 };
 
