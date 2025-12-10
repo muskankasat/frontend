@@ -1,134 +1,109 @@
-import { useState, useEffect } from 'react';
-import ChromaGrid from '../components/ChromaGrid';
-import { dashboardAPI } from '../services/Api';
+import { useState } from 'react';
+import { expenseAPI } from '../services/Api';
 
-function Dashboard() {
-  const [filterCategory, setFilterCategory] = useState('All');
-  const [filterAmount, setFilterAmount] = useState('All');
-  const [showAllTransactions, setShowAllTransactions] = useState(false);
-  const [dashboardData, setDashboardData] = useState(null);
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
+const AddExpenses = () => {
+  const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('');
+  const [date, setDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [textEntry, setTextEntry] = useState('');
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const categories = ['All', 'Shopping', 'Food', 'Income', 'Bills', 'Transport', 'Entertainment'];
+  const categories = [
+    'Travel',
+    'Shopping',
+    'Food',
+    'Entertainment',
+    'Others'
+  ];
 
-  // Fetch dashboard data on component mount
-  useEffect(() => {
-    fetchDashboardData();
-    fetchTransactions();
-  }, []);
-
-  // Fetch transactions when filters change
-  useEffect(() => {
-    fetchTransactions();
-  }, [filterCategory, filterAmount]);
-
-  const fetchDashboardData = async () => {
-    try {
-      const data = await dashboardAPI.getSummary();
-      setDashboardData(data);
-    } catch (err) {
-      setError(err.message || 'Failed to load dashboard data');
-      console.error('Dashboard error:', err);
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setSelectedImage(e.target.result);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  const fetchTransactions = async () => {
+  const handleAddExpense = async () => {
+    setError('');
+    setSuccess('');
     setLoading(true);
-    try {
-      const filters = {};
-      if (filterCategory !== 'All') filters.category = filterCategory;
-      if (filterAmount !== 'All') filters.amountRange = filterAmount;
 
-      const data = await dashboardAPI.getTransactions(filters);
-      setTransactions(data.transactions || []);
-      setError('');
+    try {
+      let imageUrl = null;
+
+      // Upload image if selected
+      if (imageFile) {
+        const imageResponse = await expenseAPI.uploadImage(imageFile);
+        imageUrl = imageResponse.imageUrl;
+      }
+
+      // Process text entry if provided
+      if (textEntry && !amount) {
+        const processedData = await expenseAPI.processTextEntry(textEntry);
+        // Use AI-processed data
+        const expenseData = {
+          amount: processedData.amount || amount,
+          category: processedData.category || category,
+          date: processedData.date ? new Date(processedData.date).toISOString() : date ? new Date(date).toISOString() : new Date().toISOString(),
+          notes: processedData.notes || notes,
+          imageUrl
+        };
+        await expenseAPI.addExpense(expenseData);
+      } else {
+        // Regular expense entry
+        if (!amount || !category || !date) {
+          setError('Please fill in amount, category, and date');
+          setLoading(false);
+          return;
+        }
+
+        // Convert date to ISO timestamp
+        const isoDate = new Date(date).toISOString();
+
+        const expenseData = {
+          amount: parseFloat(amount),
+          category,
+          date: isoDate,
+          notes,
+          imageUrl
+        };
+        await expenseAPI.addExpense(expenseData);
+      }
+
+      setSuccess('Expense added successfully!');
+      
+      // Reset form
+      setTimeout(() => {
+        setAmount('');
+        setCategory('');
+        setDate('');
+        setNotes('');
+        setTextEntry('');
+        setSelectedImage(null);
+        setImageFile(null);
+        setSuccess('');
+      }, 2000);
+
     } catch (err) {
-      setError(err.message || 'Failed to load transactions');
-      console.error('Transactions error:', err);
+      setError(err.message || 'Failed to add expense');
     } finally {
       setLoading(false);
     }
   };
 
-  // Fallback data if API fails
-  const dashboardItems = dashboardData ? [
-    {
-      title: 'Total Balance',
-      value: `₹${dashboardData.totalBalance?.toLocaleString() || '0'}`,
-      subtitle: 'Across all accounts',
-      borderColor: '#3b82f6',
-      gradient: 'linear-gradient(145deg, #1e3a8a, #000)'
-    },
-    {
-      title: 'Monthly Spending',
-      value: `₹${dashboardData.monthlySpending?.toLocaleString() || '0'}`,
-      subtitle: `${dashboardData.spendingChange >= 0 ? '↑' : '↓'} ${Math.abs(dashboardData.spendingChange || 0)}% from last month`,
-      borderColor: '#ef4444',
-      gradient: 'linear-gradient(145deg, #dc2626, #000)'
-    },
-    {
-      title: 'Monthly Income',
-      value: `₹${dashboardData.monthlyIncome?.toLocaleString() || '0'}`,
-      subtitle: dashboardData.incomeChange === 0 ? '→ Same as last month' : `${dashboardData.incomeChange >= 0 ? '↑' : '↓'} ${Math.abs(dashboardData.incomeChange || 0)}% from last month`,
-      borderColor: '#10b981',
-      gradient: 'linear-gradient(145deg, #059669, #000)'
-    },
-    {
-      title: 'Current Balance',
-      value: `₹${dashboardData.currentBalance?.toLocaleString() || '0'}`,
-      subtitle: 'Available funds',
-      borderColor: '#8b5cf6',
-      gradient: 'linear-gradient(145deg, #7c3aed, #000)'
-    }
-  ] : [
-    {
-      title: 'Total Balance',
-      value: '₹12,450',
-      subtitle: 'Across all accounts',
-      borderColor: '#3b82f6',
-      gradient: 'linear-gradient(145deg, #1e3a8a, #000)'
-    },
-    {
-      title: 'Monthly Spending',
-      value: '₹2,340',
-      subtitle: '↓ 12% from last month',
-      borderColor: '#ef4444',
-      gradient: 'linear-gradient(145deg, #dc2626, #000)'
-    },
-    {
-      title: 'Monthly Income',
-      value: '₹5,200',
-      subtitle: '→ Same as last month',
-      borderColor: '#10b981',
-      gradient: 'linear-gradient(145deg, #059669, #000)'
-    },
-    {
-      title: 'Current Balance',
-      value: '₹10,110',
-      subtitle: 'Available funds',
-      borderColor: '#8b5cf6',
-      gradient: 'linear-gradient(145deg, #7c3aed, #000)'
-    }
-  ];
-
-  const filteredTransactions = transactions.filter(tx => {
-    const matchesCategory = filterCategory === 'All' || tx.category === filterCategory;
-    const matchesAmount = 
-      filterAmount === 'All' ||
-      (filterAmount === 'Under ₹50' && Math.abs(tx.amount) < 50) ||
-      (filterAmount === '₹50 - ₹100' && Math.abs(tx.amount) >= 50 && Math.abs(tx.amount) <= 100) ||
-      (filterAmount === 'Over ₹100' && Math.abs(tx.amount) > 100);
-    
-    return matchesCategory && matchesAmount;
-  });
-
-  const displayedTransactions = showAllTransactions ? filteredTransactions : filteredTransactions.slice(0, 5);
-
   return (
     <div className="page-wrapper">
-      <div className="page-container">
+      <div className="page-container-narrow">
         
         <div className="section-spacing">
           <h1 className="heading-xl" style={{
@@ -137,257 +112,318 @@ function Dashboard() {
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text'
           }}>
-            Dashboard
+            New Entry
           </h1>
           <p className="text-body" style={{ color: '#94a3b8' }}>
-            Welcome back! Here's your financial overview
+            Add a new expense to track your spending
           </p>
         </div>
 
-        <div className="section-spacing">
-          <ChromaGrid items={dashboardItems} radius={250} />
-        </div>
-
         <div className="card">
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
-            flexWrap: 'wrap',
-            gap: '1rem'
+          <h2 className="heading-md" style={{
+            color: 'white',
+            marginBottom: 'clamp(1.5rem, 3vw, 2rem)'
           }}>
-            <div>
-              <h2 className="heading-md" style={{ color: 'white', marginBottom: '0.5rem' }}>
-                My Account
-              </h2>
-              <h3 className="text-body" style={{ color: '#94a3b8' }}>
-                Recent Transactions
-              </h3>
-            </div>
-            
-            <button
-              onClick={() => setShowAllTransactions(!showAllTransactions)}
-              disabled={loading}
-              style={{
-                padding: '0.5rem 1.25rem',
-                background: showAllTransactions ? '#3b82f6' : 'rgba(59, 130, 246, 0.2)',
-                border: '1px solid #3b82f6',
-                borderRadius: '8px',
-                color: 'white',
-                fontSize: '0.9rem',
-                fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.3s',
-                opacity: loading ? 0.6 : 1
-              }}
-            >
-              {showAllTransactions ? 'Show Less' : 'View All Transactions'}
-            </button>
-          </div>
+            Add New Expense
+          </h2>
 
-          <div className="grid-2" style={{ marginBottom: 'clamp(1rem, 3vw, 1.5rem)' }}>
-            <div>
-              <label className="text-small" style={{
-                display: 'block',
-                color: '#94a3b8',
-                marginBottom: '0.5rem',
-                fontWeight: '500'
-              }}>
-                Filter by Category
-              </label>
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                disabled={loading}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  background: 'rgba(15, 23, 42, 0.5)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  outline: 'none',
-                  opacity: loading ? 0.6 : 1
-                }}
-              >
-                {categories.map(cat => (
-                  <option key={cat} value={cat} style={{ background: '#0f172a' }}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
+          {/* Success Message */}
+          {success && (
+            <div style={{
+              padding: '0.875rem',
+              background: 'rgba(16, 185, 129, 0.1)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              borderRadius: '10px',
+              color: '#10b981',
+              marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
+              fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
+              textAlign: 'center'
+            }}>
+              {success}
             </div>
-
-            <div>
-              <label className="text-small" style={{
-                display: 'block',
-                color: '#94a3b8',
-                marginBottom: '0.5rem',
-                fontWeight: '500'
-              }}>
-                Filter by Amount
-              </label>
-              <select
-                value={filterAmount}
-                onChange={(e) => setFilterAmount(e.target.value)}
-                disabled={loading}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  background: 'rgba(15, 23, 42, 0.5)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  borderRadius: '8px',
-                  color: 'white',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  outline: 'none',
-                  opacity: loading ? 0.6 : 1
-                }}
-              >
-                <option value="All" style={{ background: '#0f172a' }}>All Amounts</option>
-                <option value="Under ₹50" style={{ background: '#0f172a' }}>Under ₹50</option>
-                <option value="₹50 - ₹100" style={{ background: '#0f172a' }}>₹50 - ₹100</option>
-                <option value="Over ₹100" style={{ background: '#0f172a' }}>Over ₹100</option>
-              </select>
-            </div>
-          </div>
-
-          {(filterCategory !== 'All' || filterAmount !== 'All') && (
-            <button
-              onClick={() => {
-                setFilterCategory('All');
-                setFilterAmount('All');
-              }}
-              disabled={loading}
-              style={{
-                padding: '0.5rem 1rem',
-                background: 'rgba(239, 68, 68, 0.2)',
-                border: '1px solid #ef4444',
-                borderRadius: '8px',
-                color: '#ef4444',
-                fontSize: '0.85rem',
-                fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                marginBottom: '1.5rem',
-                opacity: loading ? 0.6 : 1
-              }}
-            >
-              Clear Filters
-            </button>
           )}
 
           {/* Error Message */}
           {error && (
             <div style={{
-              padding: '1rem',
+              padding: '0.875rem',
               background: 'rgba(239, 68, 68, 0.1)',
               border: '1px solid rgba(239, 68, 68, 0.3)',
               borderRadius: '10px',
               color: '#ef4444',
-              marginBottom: '1rem',
+              marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
+              fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
               textAlign: 'center'
             }}>
               {error}
             </div>
           )}
 
-          {/* Loading State */}
-          {loading ? (
-            <div style={{
-              textAlign: 'center',
-              padding: '3rem',
-              color: '#64748b'
-            }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                border: '3px solid rgba(59, 130, 246, 0.3)',
-                borderTop: '3px solid #3b82f6',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite',
-                margin: '0 auto 1rem'
-              }}></div>
-              Loading transactions...
+          <div className="grid-2" style={{ marginBottom: 'clamp(1rem, 3vw, 1.5rem)' }}>
+            <div>
+              <label className="text-small" style={{
+                display: 'block',
+                marginBottom: '0.5rem',
+                color: '#e2e8f0',
+                fontWeight: '500'
+              }}>
+                Amount
+              </label>
+              <input
+                type="number"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: 'clamp(0.75rem, 2vw, 0.875rem) 1rem',
+                  background: 'rgba(15, 23, 42, 0.5)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  borderRadius: '10px',
+                  color: 'white',
+                  fontSize: 'clamp(0.9rem, 2vw, 1rem)',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  opacity: loading ? 0.6 : 1
+                }}
+              />
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {displayedTransactions.length > 0 ? (
-                displayedTransactions.map((tx, i) => (
-                  <div
-                    key={tx._id || i}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '1rem',
-                      background: 'rgba(15, 23, 42, 0.5)',
-                      borderRadius: '12px',
-                      border: '1px solid rgba(148, 163, 184, 0.1)',
-                      transition: 'all 0.3s'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = 'rgba(30, 41, 59, 0.8)';
-                      e.currentTarget.style.borderColor = '#3b82f6';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = 'rgba(15, 23, 42, 0.5)';
-                      e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.1)';
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
-                        {tx.name || tx.description || 'Expense'}
-                      </div>
-                      <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-                        {new Date(tx.date).toLocaleDateString('en-IN', { 
-                          year: 'numeric', 
-                          month: 'short', 
-                          day: 'numeric' 
-                        })} • {tx.category}
-                      </div>
-                    </div>
-                    <div style={{
-                      fontSize: '1.1rem',
-                      fontWeight: 'bold',
-                      color: tx.amount > 0 ? '#10b981' : '#ef4444'
-                    }}>
-                      {tx.amount > 0 ? '+' : ''}₹{Math.abs(tx.amount).toFixed(2)}
-                    </div>
-                  </div>
-                ))
+
+            <div>
+              <label className="text-small" style={{
+                display: 'block',
+                marginBottom: '0.5rem',
+                color: '#e2e8f0',
+                fontWeight: '500'
+              }}>
+                Category
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: 'clamp(0.75rem, 2vw, 0.875rem) 1rem',
+                  background: 'rgba(15, 23, 42, 0.5)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  borderRadius: '10px',
+                  color: category ? 'white' : '#94a3b8',
+                  fontSize: 'clamp(0.9rem, 2vw, 1rem)',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  boxSizing: 'border-box',
+                  opacity: loading ? 0.6 : 1
+                }}
+              >
+                <option value="" disabled>Select category</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat} style={{ background: '#0f172a' }}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 'clamp(1rem, 3vw, 1.5rem)' }}>
+            <label className="text-small" style={{
+              display: 'block',
+              marginBottom: '0.5rem',
+              color: '#e2e8f0',
+              fontWeight: '500'
+            }}>
+              Date
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: 'clamp(0.75rem, 2vw, 0.875rem) 1rem',
+                background: 'rgba(15, 23, 42, 0.5)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                borderRadius: '10px',
+                color: 'white',
+                fontSize: 'clamp(0.9rem, 2vw, 1rem)',
+                outline: 'none',
+                boxSizing: 'border-box',
+                colorScheme: 'dark',
+                opacity: loading ? 0.6 : 1
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: 'clamp(1.5rem, 3vw, 2rem)' }}>
+            <label className="text-small" style={{
+              display: 'block',
+              marginBottom: '0.5rem',
+              color: '#e2e8f0',
+              fontWeight: '500'
+            }}>
+              Notes
+            </label>
+            <textarea
+              placeholder="Add any additional notes..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: 'clamp(0.75rem, 2vw, 0.875rem) 1rem',
+                background: 'rgba(15, 23, 42, 0.5)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                borderRadius: '10px',
+                color: 'white',
+                fontSize: 'clamp(0.9rem, 2vw, 1rem)',
+                outline: 'none',
+                resize: 'vertical',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box',
+                opacity: loading ? 0.6 : 1
+              }}
+            />
+          </div>
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            margin: 'clamp(1.5rem, 3vw, 2rem) 0'
+          }}>
+            <div style={{ flex: 1, height: '1px', background: 'rgba(148, 163, 184, 0.2)' }}></div>
+            <span style={{ padding: '0 1rem', color: '#94a3b8', fontSize: '0.9rem', fontWeight: '500' }}>
+              OR
+            </span>
+            <div style={{ flex: 1, height: '1px', background: 'rgba(148, 163, 184, 0.2)' }}></div>
+          </div>
+
+          <div style={{ marginBottom: 'clamp(1rem, 3vw, 1.5rem)' }}>
+            <label className="text-small" style={{
+              display: 'block',
+              marginBottom: '0.5rem',
+              color: '#e2e8f0',
+              fontWeight: '500'
+            }}>
+              Add text entry (AI will process)
+            </label>
+            <textarea
+              placeholder="Describe your expense in detail..."
+              value={textEntry}
+              onChange={(e) => setTextEntry(e.target.value)}
+              rows={4}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: 'clamp(0.75rem, 2vw, 0.875rem) 1rem',
+                background: 'rgba(15, 23, 42, 0.5)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                borderRadius: '10px',
+                color: 'white',
+                fontSize: 'clamp(0.9rem, 2vw, 1rem)',
+                outline: 'none',
+                resize: 'vertical',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box',
+                opacity: loading ? 0.6 : 1
+              }}
+            />
+          </div>
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            margin: 'clamp(1.5rem, 3vw, 2rem) 0'
+          }}>
+            <div style={{ flex: 1, height: '1px', background: 'rgba(148, 163, 184, 0.2)' }}></div>
+            <span style={{ padding: '0 1rem', color: '#94a3b8', fontSize: '0.9rem', fontWeight: '500' }}>
+              OR
+            </span>
+            <div style={{ flex: 1, height: '1px', background: 'rgba(148, 163, 184, 0.2)' }}></div>
+          </div>
+
+          <div style={{ marginBottom: 'clamp(1.5rem, 3vw, 2rem)' }}>
+            <label className="text-small" style={{
+              display: 'block',
+              marginBottom: '0.5rem',
+              color: '#e2e8f0',
+              fontWeight: '500'
+            }}>
+              Upload Image
+            </label>
+            <div style={{
+              border: '2px dashed rgba(148, 163, 184, 0.3)',
+              borderRadius: '10px',
+              padding: '2rem',
+              textAlign: 'center',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.3s',
+              background: selectedImage ? 'rgba(15, 23, 42, 0.3)' : 'rgba(15, 23, 42, 0.5)',
+              opacity: loading ? 0.6 : 1
+            }}
+            onClick={() => !loading && document.getElementById('imageUpload').click()}
+            >
+              <input
+                id="imageUpload"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={loading}
+                style={{ display: 'none' }}
+              />
+              {selectedImage ? (
+                <div>
+                  <img src={selectedImage} alt="Preview" style={{
+                    maxWidth: '100%',
+                    maxHeight: '200px',
+                    borderRadius: '8px',
+                    marginBottom: '1rem'
+                  }} />
+                  <p style={{ color: '#10b981' }}>Image uploaded successfully!</p>
+                </div>
               ) : (
-                <div style={{
-                  textAlign: 'center',
-                  padding: '2rem',
-                  color: '#64748b'
-                }}>
-                  No transactions match your filters
+                <div>
+                  <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📷</div>
+                  <p style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>
+                    Click to upload image
+                  </p>
+                  <p style={{ color: '#64748b', fontSize: '0.85rem' }}>
+                    Receipt, bill, or expense photo
+                  </p>
                 </div>
               )}
             </div>
-          )}
-
-          <div style={{
-            marginTop: '1rem',
-            textAlign: 'center',
-            color: '#64748b',
-            fontSize: '0.85rem'
-          }}>
-            Showing {displayedTransactions.length} of {filteredTransactions.length} transactions
           </div>
+
+          <button
+            onClick={handleAddExpense}
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: 'clamp(0.875rem, 2.5vw, 1rem)',
+              background: loading ? 'rgba(59, 130, 246, 0.3)' : 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: 'clamp(1rem, 2.5vw, 1.1rem)',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'transform 0.2s',
+              marginTop: '1rem',
+              opacity: loading ? 0.6 : 1
+            }}
+            onMouseOver={(e) => !loading && (e.target.style.transform = 'translateY(-2px)')}
+            onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+          >
+            {loading ? 'Adding Expense...' : 'Add Expense'}
+          </button>
         </div>
       </div>
-
-      {/* Add keyframe animation for loading spinner */}
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
-}
+};
 
-export default Dashboard;
+export default AddExpenses;
