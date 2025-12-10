@@ -19,13 +19,13 @@ const handleResponse = async (response) => {
 
 // Auth APIs
 export const authAPI = {
-  login: async (username, password) => {
+  login: async (email, password) => {
     const response = await fetch(`https://ai-finance-tracker-backend-gbum.onrender.com/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email, password }),
     });
     return handleResponse(response);
   },
