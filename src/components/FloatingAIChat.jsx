@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+// import { aiChatAPI } from './services/Api'; 
 
 function FloatingAIChat() {
   const [isOpen, setIsOpen] = useState(false);
@@ -52,36 +53,19 @@ function FloatingAIChat() {
     setMessages(prev => [...prev, { text: response, sender: 'ai' }]);
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!inputValue.trim()) return;
 
     const userMessage = { text: inputValue, sender: 'user' };
     setMessages(prev => [...prev, userMessage]);
+    const messageToSend = inputValue;
     setInputValue('');
 
-    setTimeout(() => {
-      const aiResponse = generateAIResponse(inputValue);
+    try {
+      const aiResponse = await aiChatAPI.sendMessage(messageToSend);
       setMessages(prev => [...prev, { text: aiResponse, sender: 'ai' }]);
-    }, 800);
-  };
-
-  const generateAIResponse = (userInput) => {
-    const input = userInput.toLowerCase();
-    
-    if (input.includes('balance') || input.includes('money')) {
-      return "Your current balance is ₹10,110. You've spent ₹2,340 this month, which is 12% less than last month. Great job managing your expenses!";
-    } else if (input.includes('spending') || input.includes('expense')) {
-      return "Your top spending category this month is Shopping at 40%. I'd recommend setting a budget limit to control these expenses better.";
-    } else if (input.includes('save') || input.includes('saving')) {
-      return "Based on your income and expenses, I suggest saving ₹1,500 per month. This will help you build a healthy emergency fund!";
-    } else if (input.includes('budget')) {
-      return "Let me help you create a budget! Your monthly income is ₹5,200. After essential expenses, you have about ₹2,860 left for savings and discretionary spending.";
-    } else if (input.includes('category') || input.includes('categories')) {
-      return "You can track expenses in these categories: Travel, Shopping, Food, Entertainment, and Others. You can also filter transactions by category on the Dashboard!";
-    } else if (input.includes('help') || input.includes('how')) {
-      return "I can help you with: tracking expenses, viewing your budget, analyzing spending patterns, and providing financial tips. What would you like to know?";
-    } else {
-      return "I can help you with budget planning, expense tracking, savings goals, and financial insights. What would you like to know?";
+    } catch (err) {
+      setMessages(prev => [...prev, { text: "Sorry, couldn't fetch response.", sender: 'ai' }]);
     }
   };
 
