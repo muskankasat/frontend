@@ -1,24 +1,45 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DarkVeil from '../components/DardVeil';
+import { authAPI } from '../services/Api';
 
 function Login({ onLogin }) {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = () => {
-    console.log('Login submitted', { username, password });
-    if (onLogin) {
-      onLogin();
+  const handleSubmit = async () => {
+    if (!username || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await authAPI.login(username, password);
+      
+      // Store token in localStorage
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      
+      if (onLogin) {
+        onLogin();
+      }
+      
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleGoogleSignIn = () => {
-    console.log('Google sign in');
-    if (onLogin) {
-      onLogin();
-    }
+  const handleGoogleSignIn = async () => {
+    alert('Google Sign In is not implemented yet in backend');
   };
 
   return (
@@ -74,6 +95,22 @@ function Login({ onLogin }) {
           </p>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div style={{
+            padding: '0.875rem',
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '10px',
+            color: '#ef4444',
+            marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
+            fontSize: 'clamp(0.85rem, 2vw, 0.9rem)',
+            textAlign: 'center'
+          }}>
+            {error}
+          </div>
+        )}
+
         <div style={{ marginBottom: 'clamp(1rem, 3vw, 1.5rem)' }}>
           <label className="text-small" style={{
             display: 'block',
@@ -87,7 +124,11 @@ function Login({ onLogin }) {
             type="text"
             placeholder="Enter your username"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => {
+              setUsername(e.target.value);
+              setError('');
+            }}
+            disabled={loading}
             style={{
               width: '100%',
               padding: 'clamp(0.75rem, 2vw, 0.875rem) 1rem',
@@ -97,9 +138,10 @@ function Login({ onLogin }) {
               outline: 'none',
               boxSizing: 'border-box',
               background: 'rgba(15, 23, 42, 0.5)',
-              color: 'white'
+              color: 'white',
+              opacity: loading ? 0.6 : 1
             }}
-            onKeyPress={(e) => e.key === 'Enter' && password && handleSubmit()}
+            onKeyPress={(e) => e.key === 'Enter' && password && !loading && handleSubmit()}
           />
         </div>
 
@@ -116,7 +158,11 @@ function Login({ onLogin }) {
             type="password"
             placeholder="Enter your password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setError('');
+            }}
+            disabled={loading}
             style={{
               width: '100%',
               padding: 'clamp(0.75rem, 2vw, 0.875rem) 1rem',
@@ -126,9 +172,10 @@ function Login({ onLogin }) {
               outline: 'none',
               boxSizing: 'border-box',
               background: 'rgba(15, 23, 42, 0.5)',
-              color: 'white'
+              color: 'white',
+              opacity: loading ? 0.6 : 1
             }}
-            onKeyPress={(e) => e.key === 'Enter' && username && handleSubmit()}
+            onKeyPress={(e) => e.key === 'Enter' && username && !loading && handleSubmit()}
           />
         </div>
 
@@ -143,11 +190,11 @@ function Login({ onLogin }) {
 
         <button
           onClick={handleSubmit}
-          disabled={!username || !password}
+          disabled={!username || !password || loading}
           style={{
             width: '100%',
             padding: 'clamp(0.875rem, 2.5vw, 1rem)',
-            background: username && password 
+            background: username && password && !loading
               ? 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)' 
               : 'rgba(59, 130, 246, 0.3)',
             color: 'white',
@@ -155,13 +202,13 @@ function Login({ onLogin }) {
             borderRadius: '10px',
             fontSize: 'clamp(1rem, 2.5vw, 1.1rem)',
             fontWeight: '600',
-            cursor: username && password ? 'pointer' : 'not-allowed',
+            cursor: username && password && !loading ? 'pointer' : 'not-allowed',
             transition: 'all 0.2s',
             marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
-            opacity: username && password ? 1 : 0.5
+            opacity: username && password && !loading ? 1 : 0.5
           }}
         >
-          Sign In
+          {loading ? 'Signing In...' : 'Sign In'}
         </button>
 
         <div style={{
@@ -182,6 +229,7 @@ function Login({ onLogin }) {
 
         <button
           onClick={handleGoogleSignIn}
+          disabled={loading}
           style={{
             width: '100%',
             padding: 'clamp(0.75rem, 2vw, 0.875rem)',
@@ -190,13 +238,14 @@ function Login({ onLogin }) {
             borderRadius: '10px',
             fontSize: 'clamp(0.9rem, 2vw, 1rem)',
             fontWeight: '500',
-            cursor: 'pointer',
+            cursor: loading ? 'not-allowed' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '0.75rem',
             transition: 'all 0.2s',
-            color: '#e2e8f0'
+            color: '#e2e8f0',
+            opacity: loading ? 0.6 : 1
           }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24">
@@ -215,12 +264,13 @@ function Login({ onLogin }) {
         }}>
           Don't have an account?{' '}
           <span
-            onClick={() => navigate('/signup')}
+            onClick={() => !loading && navigate('/signup')}
             style={{
               color: '#3b82f6',
               textDecoration: 'none',
               fontWeight: '600',
-              cursor: 'pointer'
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1
             }}
           >
             Create Account

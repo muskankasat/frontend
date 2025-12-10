@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DarkVeil from '../components/DardVeil';
+import { authAPI } from '../services/Api';
 
 function SignUp() {
   const navigate = useNavigate();
@@ -8,8 +9,9 @@ function SignUp() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError('');
 
     // Validation
@@ -35,11 +37,17 @@ function SignUp() {
       return;
     }
 
-    console.log('Sign up submitted', { email, password });
-    
-    // Show success message and redirect to login
-    alert('Account created successfully! Please login.');
-    navigate('/login');
+    setLoading(true);
+
+    try {
+      await authAPI.signup(email, password);
+      alert('Account created successfully! Please login.');
+      navigate('/login');
+    } catch (err) {
+      setError(err.message || 'Signup failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -130,6 +138,7 @@ function SignUp() {
               setEmail(e.target.value);
               setError('');
             }}
+            disabled={loading}
             style={{
               width: '100%',
               padding: 'clamp(0.75rem, 2vw, 0.875rem) 1rem',
@@ -139,9 +148,10 @@ function SignUp() {
               outline: 'none',
               boxSizing: 'border-box',
               background: 'rgba(15, 23, 42, 0.5)',
-              color: 'white'
+              color: 'white',
+              opacity: loading ? 0.6 : 1
             }}
-            onKeyPress={(e) => e.key === 'Enter' && password && confirmPassword && handleSubmit()}
+            onKeyPress={(e) => e.key === 'Enter' && password && confirmPassword && !loading && handleSubmit()}
           />
         </div>
 
@@ -163,6 +173,7 @@ function SignUp() {
               setPassword(e.target.value);
               setError('');
             }}
+            disabled={loading}
             style={{
               width: '100%',
               padding: 'clamp(0.75rem, 2vw, 0.875rem) 1rem',
@@ -172,9 +183,10 @@ function SignUp() {
               outline: 'none',
               boxSizing: 'border-box',
               background: 'rgba(15, 23, 42, 0.5)',
-              color: 'white'
+              color: 'white',
+              opacity: loading ? 0.6 : 1
             }}
-            onKeyPress={(e) => e.key === 'Enter' && email && confirmPassword && handleSubmit()}
+            onKeyPress={(e) => e.key === 'Enter' && email && confirmPassword && !loading && handleSubmit()}
           />
           <p style={{
             fontSize: 'clamp(0.75rem, 1.8vw, 0.8rem)',
@@ -203,6 +215,7 @@ function SignUp() {
               setConfirmPassword(e.target.value);
               setError('');
             }}
+            disabled={loading}
             style={{
               width: '100%',
               padding: 'clamp(0.75rem, 2vw, 0.875rem) 1rem',
@@ -212,20 +225,21 @@ function SignUp() {
               outline: 'none',
               boxSizing: 'border-box',
               background: 'rgba(15, 23, 42, 0.5)',
-              color: 'white'
+              color: 'white',
+              opacity: loading ? 0.6 : 1
             }}
-            onKeyPress={(e) => e.key === 'Enter' && email && password && handleSubmit()}
+            onKeyPress={(e) => e.key === 'Enter' && email && password && !loading && handleSubmit()}
           />
         </div>
 
         {/* Sign Up Button */}
         <button
           onClick={handleSubmit}
-          disabled={!email || !password || !confirmPassword}
+          disabled={!email || !password || !confirmPassword || loading}
           style={{
             width: '100%',
             padding: 'clamp(0.875rem, 2.5vw, 1rem)',
-            background: email && password && confirmPassword
+            background: email && password && confirmPassword && !loading
               ? 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)' 
               : 'rgba(59, 130, 246, 0.3)',
             color: 'white',
@@ -233,13 +247,13 @@ function SignUp() {
             borderRadius: '10px',
             fontSize: 'clamp(1rem, 2.5vw, 1.1rem)',
             fontWeight: '600',
-            cursor: email && password && confirmPassword ? 'pointer' : 'not-allowed',
+            cursor: email && password && confirmPassword && !loading ? 'pointer' : 'not-allowed',
             transition: 'all 0.2s',
             marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
-            opacity: email && password && confirmPassword ? 1 : 0.5
+            opacity: email && password && confirmPassword && !loading ? 1 : 0.5
           }}
         >
-          Sign Up
+          {loading ? 'Creating Account...' : 'Sign Up'}
         </button>
 
         {/* Already Have Account */}
@@ -250,12 +264,13 @@ function SignUp() {
         }}>
           Already have an account?{' '}
           <span
-            onClick={() => navigate('/login')}
+            onClick={() => !loading && navigate('/login')}
             style={{
               color: '#3b82f6',
               textDecoration: 'none',
               fontWeight: '600',
-              cursor: 'pointer'
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1
             }}
           >
             Sign In
