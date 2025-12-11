@@ -148,7 +148,7 @@ export const expenseAPI = {
 export const dashboardAPI = {
   // Get dashboard summary
   getSummary: async () => {
-    const response = await fetch(`${API_BASE_URL}/dashboard/summary`, {
+    const response = await fetch(`https://ai-finance-tracker-backend-gbum.onrender.com/dashboard/summary`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
