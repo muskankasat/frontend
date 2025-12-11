@@ -52,13 +52,39 @@ const AddExpenses = () => {
     const processed = await expenseAPI.processTextEntry(textEntry);
 
     // Expecting list of expenses from backend
-    const items = Array.isArray(processed.expenses) ? processed.expenses : [];
+    // const items = Array.isArray(processed.expenses) ? processed.expenses : [];
 
-    if (items.length === 0) {
-      setError("AI could not extract expenses. Enter manually.");
-      setLoading(false);
-      return;
-    }
+    // if (items.length === 0) {
+    //   setError("AI could not extract expenses. Enter manually.");
+    //   setLoading(false);
+    //   return;
+    // }
+    let items = [];
+if (Array.isArray(processed.expenses)) {
+  items = processed.expenses;
+}
+else if (processed.amount) {
+  items = [processed];
+}
+
+// Case 3: AI wraps inside "data"
+else if (processed.data?.expenses) {
+  items = processed.data.expenses;
+}
+else if (processed.response) {
+  try {
+    const parsed = JSON.parse(processed.response);
+    if (Array.isArray(parsed.expenses)) items = parsed.expenses;
+  } catch (e) {
+    // ignore
+  }
+}
+
+if (items.length === 0) {
+  setError("AI could not extract expenses. Enter manually.");
+  setLoading(false);
+  return;
+}
 
     for (const e of items) {
       await expenseAPI.addExpense({
