@@ -44,24 +44,31 @@ const AddExpenses = () => {
 
       // Upload image if selected and extract data
       if (imageFile) {
-        const imageResponse = await expenseAPI.uploadImage(imageFile);
-        imageUrl = imageResponse.imageUrl;
-        extractedData = imageResponse.extractedData || {}; // Get extracted data from image
+        try {
+          const imageResponse = await expenseAPI.uploadImage(imageFile);
+          imageUrl = imageResponse.imageUrl;
+          extractedData = imageResponse.extractedData; // Get extracted data from image
+        } catch (error) {
+          console.error('Image upload failed:', error);
+          setError('Failed to process image. Please try manual entry.');
+          setLoading(false);
+          return;
+        }
       }
 
-      // Priority 1: Image upload (if image exists, use extracted data)
-      if (imageFile && extractedData) {
+      // Priority 1: Image upload (ONLY if image exists AND has valid extracted data)
+      if (imageFile && extractedData && extractedData.amount) {
         const expenseData = {
-          amount: extractedData.amount || parseFloat(amount) || 0,
-          category: extractedData.category || category || 'Others',
+          amount: extractedData.amount,
+          category: extractedData.category || 'Others',
           date: extractedData.date ? new Date(extractedData.date).toISOString() : new Date().toISOString(),
-          notes: extractedData.notes || notes || 'Expense from uploaded receipt',
+          notes: extractedData.notes || 'Expense from uploaded receipt',
           imageUrl
         };
         await expenseAPI.addExpense(expenseData);
       }
-      // Priority 2: Text entry (AI processing)
-      else if (textEntry && !amount && !imageFile) {
+      // Priority 2: Text entry (ONLY if text exists and NO image)
+      else if (textEntry && !imageFile) {
         const processedData = await expenseAPI.processTextEntry(textEntry);
         const expenseData = {
           amount: processedData.amount || 0,
@@ -72,8 +79,8 @@ const AddExpenses = () => {
         };
         await expenseAPI.addExpense(expenseData);
       }
-      // Priority 3: Manual entry
-      else if (amount && category && date) {
+      // Priority 3: Manual entry (ONLY if required fields are filled and NO image)
+      else if (amount && category && date && !imageFile) {
         // Convert date to ISO timestamp
         const isoDate = new Date(date).toISOString();
 
@@ -82,13 +89,19 @@ const AddExpenses = () => {
           category,
           date: isoDate,
           notes,
-          imageUrl
+          imageUrl: null
         };
         await expenseAPI.addExpense(expenseData);
       }
+      // Image uploaded but no data extracted - ask user to enter manually
+      else if (imageFile && (!extractedData || !extractedData.amount)) {
+        setError('Could not extract data from image. Please enter details manually or try a clearer image.');
+        setLoading(false);
+        return;
+      }
       // No valid input
       else {
-        setError('Please either: (1) Upload an image, (2) Enter text description, or (3) Fill in amount, category, and date manually');
+        setError('Please either: (1) Upload a clear receipt image, (2) Enter text description, or (3) Fill in amount, category, and date manually');
         setLoading(false);
         return;
       }
