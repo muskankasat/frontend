@@ -38,67 +38,59 @@ const AddExpenses = () => {
     setSuccess('');
     setLoading(true);
 
-    try {
-      let imageUrl = null;
+   try {
+  let imageUrl = null;
 
-      // Upload image if selected
-      if (imageFile) {
-        const imageResponse = await expenseAPI.uploadImage(imageFile);
-        imageUrl = imageResponse.imageUrl;
-      }
+  if (imageFile) {
+    const imageResponse = await expenseAPI.uploadImage(imageFile);
+    imageUrl = imageResponse.imageUrl;
+  }
 
-      // Process text entry if provided
-      if (textEntry && !amount) {
-        const processedData = await expenseAPI.processTextEntry(textEntry);
+  const isTextMode = textEntry.trim().length > 0 && !amount;
 
-        // Sanitize AI output
-        const finalAmount = processedData.amount ? parseFloat(processedData.amount) : null;
-        const finalCategory = processedData.category || 'Others';
-        const finalTimestamp = processedData.timestamp
-          ? new Date(processedData.timestamp).toISOString()
-          : timestamp
-          ? new Date(timestamp).toISOString()
-          : new Date().toISOString();
-        const finalDescription = processedData.description || description || '';
+  if (isTextMode) {
+    const processed = await expenseAPI.processTextEntry(textEntry);
 
-        // Prevent sending invalid payload
-        if (!finalAmount || !finalCategory) {
-          setError('AI could not extract amount or category. Please enter manually.');
-          setLoading(false);
-          return;
+    // Expecting list of expenses from backend
+    const items = Array.isArray(processed.expenses) ? processed.expenses : [];
+
+    if (items.length === 0) {
+      setError("AI could not extract expenses. Enter manually.");
+      setLoading(false);
+      return;
+    }
+
+    for (const e of items) {
+      await expenseAPI.addExpense({
+        amount: parseFloat(e.amount),
+        category: e.category || "Others",
+        timestamp: e.timestamp
+          ? new Date(e.timestamp).toISOString()
+          : new Date().toISOString(),
+        description: e.description || "",
+        source: imageUrl ? "bill_image" : "text_entry",
+        metadata: {
+          originalText: textEntry,
+          imageUrl: imageUrl || null
         }
+      });
+    }
+  } else {
+    if (!amount || !category || !timestamp) {
+      setError("Please fill in amount, category, and date");
+      setLoading(false);
+      return;
+    }
 
-        const expenseData = {
-          amount: finalAmount,
-          category: finalCategory,
-          timestamp: finalTimestamp,
-          description: finalDescription,
-          source: imageUrl ? 'bill_image' : 'text_entry',
-          metadata: { originalText: textEntry, imageUrl: imageUrl || null }
-        };
-
-        await expenseAPI.addExpense(expenseData);
-      } else {
-        // Regular expense entry
-        if (!amount || !category || !timestamp) {
-          setError('Please fill in amount, category, and date');
-          setLoading(false);
-          return;
-        }
-
-        // Convert date to ISO timestamp
-        const isoTimestamp = new Date(timestamp).toISOString();
-
-        const expenseData = {
-          amount: parseFloat(amount),
-          category,
-          timestamp: isoTimestamp,
-          description,
-          source: imageUrl ? 'bill_image' : 'manual_entry',
-          metadata: imageUrl ? { imageUrl } : {}
-        };
-        await expenseAPI.addExpense(expenseData);
-      }
+    await expenseAPI.addExpense({
+      amount: parseFloat(amount),
+      category,
+      timestamp: new Date(timestamp).toISOString(),
+      description,
+      source: imageUrl ? "bill_image" : "manual_entry",
+      metadata: imageUrl ? { imageUrl } : {}
+    });
+  }
 
       setSuccess('Expense added successfully!');
 
