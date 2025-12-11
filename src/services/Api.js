@@ -144,106 +144,74 @@ export const expenseAPI = {
   },
 };
 
-// Dashboard APIs - USING MOCK DATA FOR NOW
+// Dashboard APIs
 export const dashboardAPI = {
-  // Get dashboard summary - MOCK
+  // Get dashboard summary
   getSummary: async () => {
-    return {
-      totalBalance: 12450,
-      monthlySpending: 2340,
-      spendingChange: -12,
-      monthlyIncome: 5200,
-      incomeChange: 0,
-      currentBalance: 10110
-    };
+    const response = await fetch(`${API_BASE_URL}/dashboard/summary`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    return handleResponse(response);
   },
 
-  // Get transactions - MOCK
+  // Get transactions
   getTransactions: async (filters = {}) => {
-    const mockTransactions = [
-      { _id: '1', name: 'Grocery Shopping', amount: -125.5, date: '2024-12-06', category: 'Shopping' },
-      { _id: '2', name: 'Salary Deposit', amount: 5200, date: '2024-12-01', category: 'Income' },
-      { _id: '3', name: 'Restaurant', amount: -45.3, date: '2024-12-05', category: 'Food' },
-      { _id: '4', name: 'Electric Bill', amount: -89.0, date: '2024-12-04', category: 'Bills' },
-      { _id: '5', name: 'Gas Station', amount: -60.0, date: '2024-12-03', category: 'Transport' },
-      { _id: '6', name: 'Coffee Shop', amount: -12.5, date: '2024-12-02', category: 'Food' },
-      { _id: '7', name: 'Online Shopping', amount: -234.9, date: '2024-11-30', category: 'Shopping' },
-      { _id: '8', name: 'Gym Membership', amount: -50.0, date: '2024-11-29', category: 'Entertainment' },
-      { _id: '9', name: 'Freelance Payment', amount: 800, date: '2024-11-28', category: 'Income' },
-      { _id: '10', name: 'Movie Tickets', amount: -35.0, date: '2024-11-27', category: 'Entertainment' }
-    ];
-
-    // Apply filters
-    let filtered = mockTransactions;
+    const queryParams = new URLSearchParams();
     if (filters.category && filters.category !== 'All') {
-      filtered = filtered.filter(t => t.category === filters.category);
+      queryParams.append('category', filters.category);
     }
-
-    return {
-      transactions: filtered
-    };
+    
+    const response = await fetch(`${API_BASE_URL}/dashboard/transactions?${queryParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    return handleResponse(response);
   },
 };
 
-// AI Insights APIs - USING MOCK DATA FOR NOW
+// AI Insights APIs
 export const insightsAPI = {
-  // Get spending insights - MOCK
+  // Get spending insights
   getInsights: async () => {
-    return {
-      categoryTrends: [
-        { month: 'Jul', Travel: 200, Shopping: 350, Food: 180, Entertainment: 120 },
-        { month: 'Aug', Travel: 280, Shopping: 420, Food: 220, Entertainment: 150 },
-        { month: 'Sep', Travel: 320, Shopping: 380, Food: 250, Entertainment: 180 },
-        { month: 'Oct', Travel: 400, Shopping: 450, Food: 280, Entertainment: 200 },
-        { month: 'Nov', Travel: 350, Shopping: 500, Food: 300, Entertainment: 180 },
-        { month: 'Dec', Travel: 450, Shopping: 600, Food: 320, Entertainment: 220 }
-      ],
-      dailySpending: [
-        { date: '2024-12-01', amount: 45 },
-        { date: '2024-12-02', amount: 120 },
-        { date: '2024-12-03', amount: 85 },
-        { date: '2024-12-04', amount: 200 },
-        { date: '2024-12-05', amount: 95 },
-        { date: '2024-12-06', amount: 150 },
-        { date: '2024-12-07', amount: 70 }
-      ]
-    };
+    const response = await fetch(`${API_BASE_URL}/insights/spending-trends`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    return handleResponse(response);
   },
 
-  // Get category analysis - MOCK
+  // Get category analysis
   getCategoryAnalysis: async () => {
-    return {
-      categoryDistribution: [
-        { category: 'Travel', percentage: 31, amount: 930 },
-        { category: 'Shopping', percentage: 40, amount: 1200 },
-        { category: 'Food', percentage: 22, amount: 660 },
-        { category: 'Entertainment', percentage: 15, amount: 450 },
-        { category: 'Others', percentage: 7, amount: 210 }
-      ]
-    };
+    const response = await fetch(`${API_BASE_URL}/insights/category-analysis`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    return handleResponse(response);
   },
 
-  // Get recommendations - MOCK
+  // Get recommendations
   getRecommendations: async () => {
-    return {
-      recommendations: [
-        {
-          title: 'Reduce Shopping Expenses',
-          description: 'You spent 40% more on shopping this month. Consider setting a monthly budget.',
-          priority: 'high'
-        },
-        {
-          title: 'Food Budget Optimized',
-          description: 'Your food expenses are within the healthy range. Keep up the good work!',
-          priority: 'low'
-        },
-        {
-          title: 'Entertainment Spike',
-          description: 'Entertainment costs increased by 25%. Review subscriptions and one-time expenses.',
-          priority: 'medium'
-        }
-      ]
-    };
+    const response = await fetch(`${API_BASE_URL}/insights/recommendations`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    return handleResponse(response);
   },
 };
 

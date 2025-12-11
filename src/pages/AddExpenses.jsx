@@ -39,64 +39,81 @@ const AddExpenses = () => {
     setLoading(true);
 
     try {
-      let billImageUrl = null;
+      let imageUrl = null;
+      let extractedData = null;
 
-      // Upload image if selected
+      // Upload image if selected and extract data
       if (imageFile) {
         const imageResponse = await expenseAPI.uploadImage(imageFile);
-        billImageUrl = imageResponse.imageUrl;
+        imageUrl = imageResponse.imageUrl;
+        extractedData = imageResponse.extractedData || {}; // Get extracted data from image
       }
 
-      // Process text entry if provided
-      if (textEntry && !amount) {
-        const processedData = await expenseAPI.processTextEntry(textEntry);
-        // Use AI-processed data
+      // Priority 1: Image upload (if image exists, use extracted data)
+      if (imageFile && extractedData) {
         const expenseData = {
-          amount: parseFloat(processedData.amount || 0),
-          category: processedData.category || category,
-          description: processedData.description || notes,
-          timestamp: new Date().toISOString(),
-          source: 'text_entry',
-          metadata: {
-            imageUrl: billImageUrl,
-            originalText: textEntry
-          }
+          amount: extractedData.amount || parseFloat(amount) || 0,
+          category: extractedData.category || category || 'Others',
+          date: extractedData.date ? new Date(extractedData.date).toISOString() : new Date().toISOString(),
+          notes: extractedData.notes || notes || 'Expense from uploaded receipt',
+          imageUrl
         };
         await expenseAPI.addExpense(expenseData);
-      } else {
-        // Regular expense entry
-        if (!amount || !category || !date) {
-          setError('Please fill in amount, category, and date');
-          setLoading(false);
-          return;
-        }
+      }
+      // Priority 2: Text entry (AI processing)
+      else if (textEntry && !amount && !imageFile) {
+        const processedData = await expenseAPI.processTextEntry(textEntry);
+        const expenseData = {
+          amount: processedData.amount || 0,
+          category: processedData.category || 'Others',
+          date: processedData.date ? new Date(processedData.date).toISOString() : new Date().toISOString(),
+          notes: processedData.notes || textEntry,
+          imageUrl: null
+        };
+        await expenseAPI.addExpense(expenseData);
+      }
+      // Priority 3: Manual entry
+      else if (amount && category && date) {
+        // Convert date to ISO timestamp
+        const isoDate = new Date(date).toISOString();
 
         const expenseData = {
           amount: parseFloat(amount),
           category,
-          description: notes,
-          timestamp: new Date(date).toISOString(),
-          source: 'manual_entry',
-          metadata: {
-            imageUrl: billImageUrl
-          }
+          date: isoDate,
+          notes,
+          imageUrl
         };
         await expenseAPI.addExpense(expenseData);
+      }
+      // No valid input
+      else {
+        setError('Please either: (1) Upload an image, (2) Enter text description, or (3) Fill in amount, category, and date manually');
+        setLoading(false);
+        return;
       }
 
       setSuccess('Expense added successfully!');
       
-      // Reset form
+      // Immediately reset form (no delay)
+      setAmount('');
+      setCategory('');
+      setDate('');
+      setNotes('');
+      setTextEntry('');
+      setSelectedImage(null);
+      setImageFile(null);
+      
+      // Clear file input
+      const fileInput = document.getElementById('imageUpload');
+      if (fileInput) {
+        fileInput.value = '';
+      }
+      
+      // Clear success message after 3 seconds
       setTimeout(() => {
-        setAmount('');
-        setCategory('');
-        setDate('');
-        setNotes('');
-        setTextEntry('');
-        setSelectedImage(null);
-        setImageFile(null);
         setSuccess('');
-      }, 2000);
+      }, 3000);
 
     } catch (err) {
       setError(err.message || 'Failed to add expense');
@@ -424,6 +441,48 @@ const AddExpenses = () => {
           >
             {loading ? 'Adding Expense...' : 'Add Expense'}
           </button>
+
+          {/* Clear Form Button */}
+          {(amount || category || date || notes || textEntry || selectedImage) && !loading && (
+            <button
+              onClick={() => {
+                setAmount('');
+                setCategory('');
+                setDate('');
+                setNotes('');
+                setTextEntry('');
+                setSelectedImage(null);
+                setImageFile(null);
+                const fileInput = document.getElementById('imageUpload');
+                if (fileInput) fileInput.value = '';
+                setError('');
+                setSuccess('');
+              }}
+              style={{
+                width: '100%',
+                padding: 'clamp(0.75rem, 2vw, 0.875rem)',
+                background: 'rgba(239, 68, 68, 0.2)',
+                color: '#ef4444',
+                border: '1px solid #ef4444',
+                borderRadius: '10px',
+                fontSize: 'clamp(0.9rem, 2vw, 1rem)',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                marginTop: '0.75rem'
+              }}
+              onMouseOver={(e) => {
+                e.target.style.background = 'rgba(239, 68, 68, 0.3)';
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseOut={(e) => {
+                e.target.style.background = 'rgba(239, 68, 68, 0.2)';
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              Clear Form
+            </button>
+          )}
         </div>
       </div>
     </div>
