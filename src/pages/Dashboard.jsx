@@ -6,20 +6,28 @@ function Dashboard() {
   const [filterCategory, setFilterCategory] = useState('All');
   const [filterAmount, setFilterAmount] = useState('All');
   const [showAllTransactions, setShowAllTransactions] = useState(false);
-  const [dashboardData, setDashboardData] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // Income management states
+  const [currentIncome, setCurrentIncome] = useState(0);
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
+  const [incomeInput, setIncomeInput] = useState('');
+  const [savingIncome, setSavingIncome] = useState(false);
+  
+  // Dashboard summary data
+  const [dashboardData, setDashboardData] = useState(null);
 
   const categories = ['All', 'Shopping', 'Food', 'Income', 'Bills', 'Transport', 'Entertainment'];
 
-  // Fetch dashboard data on component mount
+  // Fetch all data on component mount
   useEffect(() => {
     fetchDashboardData();
     fetchTransactions();
   }, []);
 
-  // Fetch transactions when filters change
+  // Refetch dashboard data when filters change (in case new expenses are added)
   useEffect(() => {
     fetchTransactions();
   }, [filterCategory, filterAmount]);
@@ -28,6 +36,8 @@ function Dashboard() {
     try {
       const data = await dashboardAPI.getSummary();
       setDashboardData(data);
+      // Extract monthly income from the data
+      setCurrentIncome(data.monthlyIncome || 0);
     } catch (err) {
       setError(err.message || 'Failed to load dashboard data');
       console.error('Dashboard error:', err);
@@ -43,6 +53,10 @@ function Dashboard() {
 
       const data = await dashboardAPI.getTransactions(filters);
       setTransactions(data.transactions || []);
+      
+      // Refresh dashboard data to get updated calculations
+      await fetchDashboardData();
+      
       setError('');
     } catch (err) {
       setError(err.message || 'Failed to load transactions');
@@ -52,62 +66,114 @@ function Dashboard() {
     }
   };
 
-  // Fallback data if API fails
+  const handleIncomeSubmit = async () => {
+    const amount = parseFloat(incomeInput);
+    
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid income amount');
+      return;
+    }
+
+    setSavingIncome(true);
+    try {
+      // Add income as a positive transaction
+      const incomeData = {
+        amount: amount,
+        category: 'Income',
+        description: 'Monthly Income',
+        date: new Date().toISOString(),
+        timestamp: new Date().toISOString()
+      };
+      
+      // You'll need to add this to your expenseAPI
+      await fetch('https://ai-finance-tracker-backend-gbum.onrender.com/expenses/add', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(incomeData),
+      });
+      
+      setShowIncomeModal(false);
+      setIncomeInput('');
+      
+      // Refresh all data
+      await fetchDashboardData();
+      await fetchTransactions();
+    } catch (err) {
+      alert(err.message || 'Failed to save income');
+    } finally {
+      setSavingIncome(false);
+    }
+  };
+
+  // Calculate last month's savings (last month income - last month spending)
+  const calculateLastMonthSavings = () => {
+    if (!dashboardData) return 0;
+    // This would ideally come from backend, but we can approximate
+    // Last month savings = previous balance carried forward
+    return dashboardData.totalBalance - dashboardData.currentBalance;
+  };
+
+  // Dashboard items with data from backend
   const dashboardItems = dashboardData ? [
     {
-      title: 'Total Balance',
-      value: `₹${dashboardData.totalBalance?.toLocaleString() || '0'}`,
-      subtitle: 'Across all accounts',
+      title: 'Monthly Income',
+      value: `₹${(dashboardData.monthlyIncome || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      subtitle: 'Your current income',
       borderColor: '#3b82f6',
       gradient: 'linear-gradient(145deg, #1e3a8a, #000)'
     },
     {
       title: 'Monthly Spending',
-      value: `₹${dashboardData.monthlySpending?.toLocaleString() || '0'}`,
-      subtitle: `${dashboardData.spendingChange >= 0 ? '↑' : '↓'} ${Math.abs(dashboardData.spendingChange || 0)}% from last month`,
+      value: `₹${(dashboardData.monthlySpending || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      subtitle: `${dashboardData.spendingChange >= 0 ? '↑' : '↓'} ${Math.abs(dashboardData.spendingChange || 0).toFixed(1)}% from last month`,
       borderColor: '#ef4444',
       gradient: 'linear-gradient(145deg, #dc2626, #000)'
     },
     {
-      title: 'Monthly Income',
-      value: `₹${dashboardData.monthlyIncome?.toLocaleString() || '0'}`,
-      subtitle: dashboardData.incomeChange === 0 ? '→ Same as last month' : `${dashboardData.incomeChange >= 0 ? '↑' : '↓'} ${Math.abs(dashboardData.incomeChange || 0)}% from last month`,
+      title: 'Savings This Month',
+      value: `₹${((dashboardData.monthlyIncome || 0) - (dashboardData.monthlySpending || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      subtitle: 'Income - Expenses',
       borderColor: '#10b981',
       gradient: 'linear-gradient(145deg, #059669, #000)'
     },
     {
-      title: 'Current Balance',
-      value: `₹${dashboardData.currentBalance?.toLocaleString() || '0'}`,
-      subtitle: 'Available funds',
-      borderColor: '#8b5cf6',
-      gradient: 'linear-gradient(145deg, #7c3aed, #000)'
+      title: 'Total Balance',
+      value: `₹${(dashboardData.totalBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      subtitle: dashboardData.totalBalance >= 0 ? 'All time balance' : 'In deficit',
+      borderColor: dashboardData.totalBalance >= 0 ? '#8b5cf6' : '#f59e0b',
+      gradient: dashboardData.totalBalance >= 0 
+        ? 'linear-gradient(145deg, #7c3aed, #000)'
+        : 'linear-gradient(145deg, #d97706, #000)'
     }
   ] : [
     {
-      title: 'Total Balance',
-      value: '₹12,450',
-      subtitle: 'Across all accounts',
+      title: 'Monthly Income',
+      value: '₹0.00',
+      subtitle: 'Loading...',
       borderColor: '#3b82f6',
       gradient: 'linear-gradient(145deg, #1e3a8a, #000)'
     },
     {
       title: 'Monthly Spending',
-      value: '₹2,340',
-      subtitle: '↓ 12% from last month',
+      value: '₹0.00',
+      subtitle: 'Loading...',
       borderColor: '#ef4444',
       gradient: 'linear-gradient(145deg, #dc2626, #000)'
     },
     {
-      title: 'Monthly Income',
-      value: '₹5,200',
-      subtitle: '→ Same as last month',
+      title: 'Savings This Month',
+      value: '₹0.00',
+      subtitle: 'Loading...',
       borderColor: '#10b981',
       gradient: 'linear-gradient(145deg, #059669, #000)'
     },
     {
-      title: 'Current Balance',
-      value: '₹10,110',
-      subtitle: 'Available funds',
+      title: 'Total Balance',
+      value: '₹0.00',
+      subtitle: 'Loading...',
       borderColor: '#8b5cf6',
       gradient: 'linear-gradient(145deg, #7c3aed, #000)'
     }
@@ -131,17 +197,47 @@ function Dashboard() {
       <div className="page-container">
         
         <div className="section-spacing">
-          <h1 className="heading-xl" style={{
-            background: 'linear-gradient(to right, #3b82f6, #8b5cf6)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text'
-          }}>
-            Dashboard
-          </h1>
-          <p className="text-body" style={{ color: '#94a3b8' }}>
-            Welcome back! Here's your financial overview
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h1 className="heading-xl" style={{
+                background: 'linear-gradient(to right, #3b82f6, #8b5cf6)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>
+                Dashboard
+              </h1>
+              <p className="text-body" style={{ color: '#94a3b8' }}>
+                Welcome back! Here's your financial overview
+              </p>
+            </div>
+            
+            <button
+              onClick={() => setShowIncomeModal(true)}
+              style={{
+                padding: '0.75rem 1.5rem',
+                background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                border: 'none',
+                borderRadius: '12px',
+                color: 'white',
+                fontSize: '1rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.4)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+              }}
+            >
+              Add Income
+            </button>
+          </div>
         </div>
 
         <div className="section-spacing">
@@ -277,7 +373,6 @@ function Dashboard() {
             </button>
           )}
 
-          {/* Error Message */}
           {error && (
             <div style={{
               padding: '1rem',
@@ -292,7 +387,6 @@ function Dashboard() {
             </div>
           )}
 
-          {/* Loading State */}
           {loading ? (
             <div style={{
               textAlign: 'center',
@@ -337,10 +431,10 @@ function Dashboard() {
                   >
                     <div>
                       <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
-                        {tx.name || tx.description || 'Expense'}
+                        {tx.name || tx.description || 'Transaction'}
                       </div>
                       <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-                        {new Date(tx.date).toLocaleDateString('en-IN', { 
+                        {new Date(tx.date || tx.timestamp).toLocaleDateString('en-IN', { 
                           year: 'numeric', 
                           month: 'short', 
                           day: 'numeric' 
@@ -362,7 +456,7 @@ function Dashboard() {
                   padding: '2rem',
                   color: '#64748b'
                 }}>
-                  No transactions match your filters
+                  No transactions found. Add your first transaction to get started!
                 </div>
               )}
             </div>
@@ -379,7 +473,138 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Add keyframe animation for loading spinner */}
+      {/* Income Modal */}
+      {showIncomeModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}
+        onClick={() => setShowIncomeModal(false)}
+        >
+          <div 
+            style={{
+              background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+              borderRadius: '20px',
+              padding: '2rem',
+              maxWidth: '500px',
+              width: '100%',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{
+              fontSize: '1.75rem',
+              fontWeight: 'bold',
+              marginBottom: '0.5rem',
+              background: 'linear-gradient(to right, #3b82f6, #8b5cf6)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}>
+              Add Income
+            </h2>
+            <p style={{ color: '#94a3b8', marginBottom: '1.5rem' }}>
+              Record your income to track your finances accurately
+            </p>
+
+            {currentIncome > 0 && (
+              <div style={{
+                padding: '1rem',
+                background: 'rgba(59, 130, 246, 0.1)',
+                borderRadius: '12px',
+                marginBottom: '1.5rem',
+                border: '1px solid rgba(59, 130, 246, 0.2)'
+              }}>
+                <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
+                  Current Month Income
+                </div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#3b82f6' }}>
+                  ₹{currentIncome.toLocaleString('en-IN')}
+                </div>
+              </div>
+            )}
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{
+                display: 'block',
+                color: '#94a3b8',
+                marginBottom: '0.5rem',
+                fontWeight: '500'
+              }}>
+                Income Amount (₹)
+              </label>
+              <input
+                type="number"
+                value={incomeInput}
+                onChange={(e) => setIncomeInput(e.target.value)}
+                placeholder="Enter amount"
+                style={{
+                  width: '100%',
+                  padding: '1rem',
+                  background: 'rgba(15, 23, 42, 0.5)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  borderRadius: '12px',
+                  color: 'white',
+                  fontSize: '1.1rem',
+                  outline: 'none',
+                  transition: 'border-color 0.3s'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                onBlur={(e) => e.target.style.borderColor = 'rgba(59, 130, 246, 0.3)'}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                onClick={() => setShowIncomeModal(false)}
+                disabled={savingIncome}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  background: 'rgba(148, 163, 184, 0.1)',
+                  border: '1px solid rgba(148, 163, 184, 0.3)',
+                  borderRadius: '12px',
+                  color: '#94a3b8',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  cursor: savingIncome ? 'not-allowed' : 'pointer',
+                  opacity: savingIncome ? 0.5 : 1
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleIncomeSubmit}
+                disabled={savingIncome || !incomeInput}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  background: savingIncome || !incomeInput 
+                    ? 'rgba(59, 130, 246, 0.3)' 
+                    : 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  cursor: savingIncome || !incomeInput ? 'not-allowed' : 'pointer',
+                  opacity: savingIncome || !incomeInput ? 0.5 : 1
+                }}
+              >
+                {savingIncome ? 'Saving...' : 'Add Income'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }

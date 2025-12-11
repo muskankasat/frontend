@@ -151,7 +151,7 @@ export const dashboardAPI = {
     const response = await fetch(`${API_BASE_URL}/dashboard/summary`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${getAuthToken()}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });
