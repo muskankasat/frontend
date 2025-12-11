@@ -77,10 +77,39 @@ const AddExpenses = () => {
       // Priority 2: Text entry (allow text even if an image was selected but extraction failed)
       else if (textEntry) {
         const processedData = await expenseAPI.processTextEntry(textEntry);
-        const amt = processedData && processedData.amount ? Number(processedData.amount) : NaN;
+        console.log('Processed text response:', processedData);
 
-        if (!Number.isFinite(amt) || amt <= 0) {
-          setError('AI could not extract a valid amount from the text. Please fill in the amount manually.');
+        // Helper to extract a numeric amount from various shapes
+        const extractNumber = (val) => {
+          if (val == null) return null;
+          if (typeof val === 'number' && Number.isFinite(val)) return val;
+          if (typeof val === 'string') {
+            // remove common currency symbols and find first number
+            const cleaned = val.replace(/[^0-9.\-]+/g, ' ').trim();
+            const m = cleaned.match(/-?\d+(?:\.\d+)?/);
+            if (m) return Number(m[0]);
+          }
+          return null;
+        };
+
+        // Try multiple possible places backend might put amount
+        let amt = null;
+        amt = extractNumber(processedData?.amount) ?? extractNumber(processedData?.total) ?? extractNumber(processedData?.parsed_amount) ?? extractNumber(processedData?.metadata?.amount) ?? extractNumber(processedData?.data?.amount);
+
+        // If still no amount, try to find a number inside the returned text fields
+        if (amt == null && typeof processedData === 'object') {
+          const searchFields = [processedData.notes, processedData.description, processedData.text, processedData.parsed_text, processedData.raw_text];
+          for (const f of searchFields) {
+            const candidate = extractNumber(f);
+            if (candidate != null) { amt = candidate; break; }
+          }
+        }
+
+        if (amt == null || !Number.isFinite(amt) || amt <= 0) {
+          // Don't silently fail — prompt user to enter amount manually but prefill other fields
+          setCategory(processedData?.category || category || 'Others');
+          setNotes(processedData?.notes || processedData?.description || textEntry || notes);
+          setError('AI could not extract a valid amount. Please enter the amount manually and submit.');
           setLoading(false);
           return;
         }
@@ -89,7 +118,7 @@ const AddExpenses = () => {
           amount: amt,
           category: processedData.category || 'Others',
           date: processedData.date ? new Date(processedData.date).toISOString() : new Date().toISOString(),
-          notes: processedData.notes || textEntry,
+          notes: processedData.notes || processedData.description || textEntry,
           imageUrl: imageUrl || null
         };
         await expenseAPI.addExpense(expenseData);
