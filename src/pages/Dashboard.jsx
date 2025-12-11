@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import ChromaGrid from '../components/ChromaGrid';
-import { dashboardAPI } from '../services/Api';
+import { dashboardAPI, expenseAPI } from '../services/Api';
 
 function Dashboard() {
   const [filterCategory, setFilterCategory] = useState('All');
@@ -18,29 +18,32 @@ function Dashboard() {
   
   // Dashboard summary data
   const [dashboardData, setDashboardData] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const categories = ['All', 'Shopping', 'Food', 'Income', 'Bills', 'Transport', 'Entertainment'];
 
-  // Fetch all data on component mount
+  // Fetch all data on component mount and when refreshKey changes
   useEffect(() => {
+    console.log('🔄 Fetching dashboard data...');
     fetchDashboardData();
     fetchTransactions();
-  }, []);
+  }, [refreshKey]);
 
-  // Refetch dashboard data when filters change (in case new expenses are added)
+  // Refetch when filters change
   useEffect(() => {
     fetchTransactions();
   }, [filterCategory, filterAmount]);
 
   const fetchDashboardData = async () => {
     try {
+      console.log('📊 Calling /dashboard/summary...');
       const data = await dashboardAPI.getSummary();
+      console.log('✅ Dashboard data received:', data);
       setDashboardData(data);
-      // Extract monthly income from the data
       setCurrentIncome(data.monthlyIncome || 0);
     } catch (err) {
+      console.error('❌ Dashboard error:', err);
       setError(err.message || 'Failed to load dashboard data');
-      console.error('Dashboard error:', err);
     }
   };
 
@@ -51,16 +54,14 @@ function Dashboard() {
       if (filterCategory !== 'All') filters.category = filterCategory;
       if (filterAmount !== 'All') filters.amountRange = filterAmount;
 
+      console.log('📋 Fetching transactions with filters:', filters);
       const data = await dashboardAPI.getTransactions(filters);
+      console.log('✅ Transactions received:', data);
       setTransactions(data.transactions || []);
-      
-      // Refresh dashboard data to get updated calculations
-      await fetchDashboardData();
-      
       setError('');
     } catch (err) {
+      console.error('❌ Transactions error:', err);
       setError(err.message || 'Failed to load transactions');
-      console.error('Transactions error:', err);
     } finally {
       setLoading(false);
     }
@@ -76,44 +77,41 @@ function Dashboard() {
 
     setSavingIncome(true);
     try {
-      // Add income as a positive transaction
+      console.log('💰 Adding income:', amount);
+      
+      // Prepare income data
       const incomeData = {
         amount: amount,
         category: 'Income',
         description: 'Monthly Income',
+        name: 'Income',
         date: new Date().toISOString(),
         timestamp: new Date().toISOString()
       };
       
-      // You'll need to add this to your expenseAPI
-      await fetch('https://ai-finance-tracker-backend-gbum.onrender.com/expenses/add', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(incomeData),
-      });
+      console.log('📤 Sending income data:', incomeData);
       
+      // Add income using expenseAPI
+      const response = await expenseAPI.addExpense(incomeData);
+      console.log('✅ Income added successfully:', response);
+      
+      // Close modal and reset
       setShowIncomeModal(false);
       setIncomeInput('');
       
-      // Refresh all data
-      await fetchDashboardData();
-      await fetchTransactions();
+      // Force refresh by updating key
+      console.log('🔄 Triggering refresh...');
+      setRefreshKey(prev => prev + 1);
+      
+      // Show success message
+      alert('Income added successfully!');
+      
     } catch (err) {
-      alert(err.message || 'Failed to save income');
+      console.error('❌ Failed to save income:', err);
+      alert(err.message || 'Failed to save income. Please check console for details.');
     } finally {
       setSavingIncome(false);
     }
-  };
-
-  // Calculate last month's savings (last month income - last month spending)
-  const calculateLastMonthSavings = () => {
-    if (!dashboardData) return 0;
-    // This would ideally come from backend, but we can approximate
-    // Last month savings = previous balance carried forward
-    return dashboardData.totalBalance - dashboardData.currentBalance;
   };
 
   // Dashboard items with data from backend
@@ -212,33 +210,80 @@ function Dashboard() {
               </p>
             </div>
             
-            <button
-              onClick={() => setShowIncomeModal(true)}
-              style={{
-                padding: '0.75rem 1.5rem',
-                background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                border: 'none',
-                borderRadius: '12px',
-                color: 'white',
-                fontSize: '1rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.3s',
-                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.4)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
-              }}
-            >
-              Add Income
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  console.log('🔄 Manual refresh triggered');
+                  setRefreshKey(prev => prev + 1);
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'rgba(139, 92, 246, 0.2)',
+                  border: '1px solid #8b5cf6',
+                  borderRadius: '12px',
+                  color: '#8b5cf6',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(139, 92, 246, 0.3)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)';
+                }}
+              >
+                🔄 Refresh
+              </button>
+              
+              <button
+                onClick={() => setShowIncomeModal(true)}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s',
+                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.4)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+                }}
+              >
+                Add Income
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Debug Info - Remove this in production */}
+        {dashboardData && (
+          <div style={{
+            padding: '1rem',
+            background: 'rgba(59, 130, 246, 0.1)',
+            borderRadius: '12px',
+            marginBottom: '1rem',
+            border: '1px solid rgba(59, 130, 246, 0.2)',
+            fontSize: '0.85rem',
+            color: '#94a3b8'
+          }}>
+            <strong style={{ color: '#3b82f6' }}>Debug Info:</strong> Last Updated: {new Date().toLocaleTimeString()} | 
+            Income: ₹{dashboardData.monthlyIncome} | 
+            Spending: ₹{dashboardData.monthlySpending} | 
+            Balance: ₹{dashboardData.totalBalance} | 
+            Refresh Key: {refreshKey}
+          </div>
+        )}
 
         <div className="section-spacing">
           <ChromaGrid items={dashboardItems} radius={250} />
@@ -545,6 +590,8 @@ function Dashboard() {
                 value={incomeInput}
                 onChange={(e) => setIncomeInput(e.target.value)}
                 placeholder="Enter amount"
+                step="0.01"
+                min="0"
                 style={{
                   width: '100%',
                   padding: '1rem',
@@ -563,7 +610,10 @@ function Dashboard() {
 
             <div style={{ display: 'flex', gap: '1rem' }}>
               <button
-                onClick={() => setShowIncomeModal(false)}
+                onClick={() => {
+                  setShowIncomeModal(false);
+                  setIncomeInput('');
+                }}
                 disabled={savingIncome}
                 style={{
                   flex: 1,
@@ -582,11 +632,11 @@ function Dashboard() {
               </button>
               <button
                 onClick={handleIncomeSubmit}
-                disabled={savingIncome || !incomeInput}
+                disabled={savingIncome || !incomeInput || parseFloat(incomeInput) <= 0}
                 style={{
                   flex: 1,
                   padding: '0.75rem',
-                  background: savingIncome || !incomeInput 
+                  background: (savingIncome || !incomeInput || parseFloat(incomeInput) <= 0)
                     ? 'rgba(59, 130, 246, 0.3)' 
                     : 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
                   border: 'none',
@@ -594,8 +644,8 @@ function Dashboard() {
                   color: 'white',
                   fontSize: '1rem',
                   fontWeight: '600',
-                  cursor: savingIncome || !incomeInput ? 'not-allowed' : 'pointer',
-                  opacity: savingIncome || !incomeInput ? 0.5 : 1
+                  cursor: (savingIncome || !incomeInput || parseFloat(incomeInput) <= 0) ? 'not-allowed' : 'pointer',
+                  opacity: (savingIncome || !incomeInput || parseFloat(incomeInput) <= 0) ? 0.5 : 1
                 }}
               >
                 {savingIncome ? 'Saving...' : 'Add Income'}
