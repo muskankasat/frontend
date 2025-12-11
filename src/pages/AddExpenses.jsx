@@ -50,6 +50,7 @@ const AddExpenses = () => {
 
   if (isTextMode) {
     const processed = await expenseAPI.processTextEntry(textEntry);
+    console.log("Processed AI Response:", processed);
 
     // Expecting list of expenses from backend
     const items = Array.isArray(processed.parsed) ? processed.parsed : [];
