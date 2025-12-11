@@ -50,15 +50,33 @@ const AddExpenses = () => {
       // Process text entry if provided
       if (textEntry && !amount) {
         const processedData = await expenseAPI.processTextEntry(textEntry);
-        // Use AI-processed data
+
+        // Sanitize AI output
+        const finalAmount = processedData.amount ? parseFloat(processedData.amount) : null;
+        const finalCategory = processedData.category || 'Others';
+        const finalTimestamp = processedData.timestamp
+          ? new Date(processedData.timestamp).toISOString()
+          : timestamp
+          ? new Date(timestamp).toISOString()
+          : new Date().toISOString();
+        const finalDescription = processedData.description || description || '';
+
+        // Prevent sending invalid payload
+        if (!finalAmount || !finalCategory) {
+          setError('AI could not extract amount or category. Please enter manually.');
+          setLoading(false);
+          return;
+        }
+
         const expenseData = {
-          amount: processedData.amount || amount,
-          category: processedData.category || category,
-          timestamp: processedData.timestamp ? new Date(processedData.timestamp).toISOString() : timestamp ? new Date(timestamp).toISOString() : new Date().toISOString(),
-          description: processedData.description || description,
+          amount: finalAmount,
+          category: finalCategory,
+          timestamp: finalTimestamp,
+          description: finalDescription,
           source: imageUrl ? 'bill_image' : 'text_entry',
-          metadata: { originalText: textEntry }
+          metadata: { originalText: textEntry, imageUrl: imageUrl || null }
         };
+
         await expenseAPI.addExpense(expenseData);
       } else {
         // Regular expense entry
@@ -83,7 +101,7 @@ const AddExpenses = () => {
       }
 
       setSuccess('Expense added successfully!');
-      
+
       // Reset form
       setTimeout(() => {
         setAmount('');
@@ -106,7 +124,7 @@ const AddExpenses = () => {
   return (
     <div className="page-wrapper">
       <div className="page-container-narrow">
-        
+
         <div className="section-spacing">
           <h1 className="heading-xl" style={{
             background: 'linear-gradient(to right, #3b82f6, #8b5cf6)',
