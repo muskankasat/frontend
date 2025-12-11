@@ -58,8 +58,15 @@ const AddExpenses = () => {
 
       // Priority 1: Image upload (ONLY if image exists AND has valid extracted data)
       if (imageFile && extractedData && extractedData.amount) {
+        const amt = Number(extractedData.amount);
+        if (!Number.isFinite(amt) || amt <= 0) {
+          setError('Extracted amount from image is invalid. Please enter details manually.');
+          setLoading(false);
+          return;
+        }
+
         const expenseData = {
-          amount: extractedData.amount,
+          amount: amt,
           category: extractedData.category || 'Others',
           date: extractedData.date ? new Date(extractedData.date).toISOString() : new Date().toISOString(),
           notes: extractedData.notes || 'Expense from uploaded receipt',
@@ -67,35 +74,50 @@ const AddExpenses = () => {
         };
         await expenseAPI.addExpense(expenseData);
       }
-      // Priority 2: Text entry (ONLY if text exists and NO image)
-      else if (textEntry && !imageFile) {
+      // Priority 2: Text entry (allow text even if an image was selected but extraction failed)
+      else if (textEntry) {
         const processedData = await expenseAPI.processTextEntry(textEntry);
+        const amt = processedData && processedData.amount ? Number(processedData.amount) : NaN;
+
+        if (!Number.isFinite(amt) || amt <= 0) {
+          setError('AI could not extract a valid amount from the text. Please fill in the amount manually.');
+          setLoading(false);
+          return;
+        }
+
         const expenseData = {
-          amount: processedData.amount || 0,
+          amount: amt,
           category: processedData.category || 'Others',
           date: processedData.date ? new Date(processedData.date).toISOString() : new Date().toISOString(),
           notes: processedData.notes || textEntry,
-          imageUrl: null
+          imageUrl: imageUrl || null
         };
         await expenseAPI.addExpense(expenseData);
       }
-      // Priority 3: Manual entry (ONLY if required fields are filled and NO image)
-      else if (amount && category && date && !imageFile) {
+      // Priority 3: Manual entry (ONLY if required fields are filled)
+      else if (amount && category && date) {
         // Convert date to ISO timestamp
         const isoDate = new Date(date).toISOString();
 
+        const parsedAmount = parseFloat(amount);
+        if (Number.isNaN(parsedAmount) || !Number.isFinite(parsedAmount)) {
+          setError('Please enter a valid number for amount');
+          setLoading(false);
+          return;
+        }
+
         const expenseData = {
-          amount: parseFloat(amount),
+          amount: parsedAmount,
           category,
           date: isoDate,
           notes,
-          imageUrl: null
+          imageUrl: imageUrl || null
         };
         await expenseAPI.addExpense(expenseData);
       }
-      // Image uploaded but no data extracted - ask user to enter manually
+      // Image selected but no extracted data and no text/manual entry provided
       else if (imageFile && (!extractedData || !extractedData.amount)) {
-        setError('Could not extract data from image. Please enter details manually or try a clearer image.');
+        setError('Could not extract data from image. Please enter details manually or provide a text description.');
         setLoading(false);
         return;
       }
