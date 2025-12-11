@@ -4,8 +4,8 @@ import { expenseAPI } from '../services/Api';
 const AddExpenses = () => {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
-  const [date, setDate] = useState('');
-  const [notes, setNotes] = useState('');
+  const [timestamp, setTimestamp] = useState('');
+  const [description, setDescription] = useState('');
   const [textEntry, setTextEntry] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageFile, setImageFile] = useState(null);
@@ -40,93 +40,61 @@ const AddExpenses = () => {
 
     try {
       let imageUrl = null;
-      let extractedData = null;
 
-      // Upload image if selected and extract data
+      // Upload image if selected
       if (imageFile) {
-        try {
-          const imageResponse = await expenseAPI.uploadImage(imageFile);
-          imageUrl = imageResponse.imageUrl;
-          extractedData = imageResponse.extractedData; // Get extracted data from image
-        } catch (error) {
-          console.error('Image upload failed:', error);
-          setError('Failed to process image. Please try manual entry.');
+        const imageResponse = await expenseAPI.uploadImage(imageFile);
+        imageUrl = imageResponse.imageUrl;
+      }
+
+      // Process text entry if provided
+      if (textEntry && !amount) {
+        const processedData = await expenseAPI.processTextEntry(textEntry);
+        // Use AI-processed data
+        const expenseData = {
+          amount: processedData.amount || amount,
+          category: processedData.category || category,
+          timestamp: processedData.timestamp ? new Date(processedData.timestamp).toISOString() : timestamp ? new Date(timestamp).toISOString() : new Date().toISOString(),
+          description: processedData.description || description,
+          source: imageUrl ? 'bill_image' : 'text_entry',
+          metadata: { originalText: textEntry }
+        };
+        await expenseAPI.addExpense(expenseData);
+      } else {
+        // Regular expense entry
+        if (!amount || !category || !timestamp) {
+          setError('Please fill in amount, category, and date');
           setLoading(false);
           return;
         }
-      }
 
-      // Priority 1: Image upload (ONLY if image exists AND has valid extracted data)
-      if (imageFile && extractedData && extractedData.amount) {
-        const expenseData = {
-          amount: extractedData.amount,
-          category: extractedData.category || 'Others',
-          date: extractedData.date ? new Date(extractedData.date).toISOString() : new Date().toISOString(),
-          notes: extractedData.notes || 'Expense from uploaded receipt',
-          imageUrl
-        };
-        await expenseAPI.addExpense(expenseData);
-      }
-      // Priority 2: Text entry (ONLY if text exists and NO image)
-      else if (textEntry && !imageFile) {
-        const processedData = await expenseAPI.processTextEntry(textEntry);
-        const expenseData = {
-          amount: processedData.amount || 0,
-          category: processedData.category || 'Others',
-          date: processedData.date ? new Date(processedData.date).toISOString() : new Date().toISOString(),
-          notes: processedData.notes || textEntry,
-          imageUrl: null
-        };
-        await expenseAPI.addExpense(expenseData);
-      }
-      // Priority 3: Manual entry (ONLY if required fields are filled and NO image)
-      else if (amount && category && date && !imageFile) {
         // Convert date to ISO timestamp
-        const isoDate = new Date(date).toISOString();
+        const isoTimestamp = new Date(timestamp).toISOString();
 
         const expenseData = {
           amount: parseFloat(amount),
           category,
-          date: isoDate,
-          notes,
-          imageUrl: null
+          timestamp: isoTimestamp,
+          description,
+          source: imageUrl ? 'bill_image' : 'manual_entry',
+          metadata: imageUrl ? { imageUrl } : {}
         };
         await expenseAPI.addExpense(expenseData);
-      }
-      // Image uploaded but no data extracted - ask user to enter manually
-      else if (imageFile && (!extractedData || !extractedData.amount)) {
-        setError('Could not extract data from image. Please enter details manually or try a clearer image.');
-        setLoading(false);
-        return;
-      }
-      // No valid input
-      else {
-        setError('Please either: (1) Upload a clear receipt image, (2) Enter text description, or (3) Fill in amount, category, and date manually');
-        setLoading(false);
-        return;
       }
 
       setSuccess('Expense added successfully!');
       
-      // Immediately reset form (no delay)
-      setAmount('');
-      setCategory('');
-      setDate('');
-      setNotes('');
-      setTextEntry('');
-      setSelectedImage(null);
-      setImageFile(null);
-      
-      // Clear file input
-      const fileInput = document.getElementById('imageUpload');
-      if (fileInput) {
-        fileInput.value = '';
-      }
-      
-      // Clear success message after 3 seconds
+      // Reset form
       setTimeout(() => {
+        setAmount('');
+        setCategory('');
+        setTimestamp('');
+        setDescription('');
+        setTextEntry('');
+        setSelectedImage(null);
+        setImageFile(null);
         setSuccess('');
-      }, 3000);
+      }, 2000);
 
     } catch (err) {
       setError(err.message || 'Failed to add expense');
@@ -272,8 +240,8 @@ const AddExpenses = () => {
             </label>
             <input
               type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
+              value={timestamp}
+              onChange={(e) => setTimestamp(e.target.value)}
               disabled={loading}
               style={{
                 width: '100%',
@@ -298,12 +266,12 @@ const AddExpenses = () => {
               color: '#e2e8f0',
               fontWeight: '500'
             }}>
-              Notes
+              Description
             </label>
             <textarea
-              placeholder="Add any additional notes..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any additional description..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               rows={3}
               disabled={loading}
               style={{
@@ -454,48 +422,6 @@ const AddExpenses = () => {
           >
             {loading ? 'Adding Expense...' : 'Add Expense'}
           </button>
-
-          {/* Clear Form Button */}
-          {(amount || category || date || notes || textEntry || selectedImage) && !loading && (
-            <button
-              onClick={() => {
-                setAmount('');
-                setCategory('');
-                setDate('');
-                setNotes('');
-                setTextEntry('');
-                setSelectedImage(null);
-                setImageFile(null);
-                const fileInput = document.getElementById('imageUpload');
-                if (fileInput) fileInput.value = '';
-                setError('');
-                setSuccess('');
-              }}
-              style={{
-                width: '100%',
-                padding: 'clamp(0.75rem, 2vw, 0.875rem)',
-                background: 'rgba(239, 68, 68, 0.2)',
-                color: '#ef4444',
-                border: '1px solid #ef4444',
-                borderRadius: '10px',
-                fontSize: 'clamp(0.9rem, 2vw, 1rem)',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                marginTop: '0.75rem'
-              }}
-              onMouseOver={(e) => {
-                e.target.style.background = 'rgba(239, 68, 68, 0.3)';
-                e.target.style.transform = 'translateY(-2px)';
-              }}
-              onMouseOut={(e) => {
-                e.target.style.background = 'rgba(239, 68, 68, 0.2)';
-                e.target.style.transform = 'translateY(0)';
-              }}
-            >
-              Clear Form
-            </button>
-          )}
         </div>
       </div>
     </div>
