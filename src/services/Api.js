@@ -148,7 +148,7 @@ export const dashboardAPI = {
     const data = await handleResponse(response);
     
     // Filter on frontend if category filter is applied
-    let transactions = data.expenses || [];
+    let transactions = data.data || [];
     
     if (filters.category && filters.category !== 'All') {
       transactions = transactions.filter(tx => tx.category === filters.category);
