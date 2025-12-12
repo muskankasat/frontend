@@ -213,7 +213,10 @@ const AddExpenses = () => {
         await expenseAPI.addExpense({
           amount: parseFloat(amount),
           category,
-          timestamp: new Date(timestamp).toISOString(),
+          // timestamp: new Date(timestamp).toISOString(),
+          timestamp: timestamp 
+          ? new Date(timestamp).toISOString()
+          : new Date().toISOString(),
           description,
           source: imageUrl ? "bill_image" : "manual_entry",
           metadata: imageUrl ? { imageUrl } : {},
