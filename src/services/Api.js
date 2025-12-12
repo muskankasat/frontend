@@ -162,7 +162,7 @@ export const dashboardAPI = {
 export const insightsAPI = {
   // Get spending insights
   getInsights: async () => {
-    const response = await fetch(`${API_BASE_URL}/insights/spending-trends`, {
+    const response = await fetch(`https://ai-finance-tracker-backend-gbum.onrender.com/api/insights`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${getAuthToken()}`,
@@ -174,7 +174,7 @@ export const insightsAPI = {
 
   // Get category analysis
   getCategoryAnalysis: async () => {
-    const response = await fetch(`${API_BASE_URL}/insights/category-analysis`, {
+    const response = await fetch(`https://ai-finance-tracker-backend-gbum.onrender.com/api/category-analysis`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${getAuthToken()}`,
