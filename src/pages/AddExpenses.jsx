@@ -1,132 +1,3 @@
-// import { useState } from "react";
-// import { expenseAPI } from "../services/Api";
-
-// const AddExpenses = () => {
-//   const [amount, setAmount] = useState("");
-//   const [category, setCategory] = useState("");
-//   const [timestamp, setTimestamp] = useState("");
-//   const [description, setDescription] = useState("");
-//   const [textEntry, setTextEntry] = useState("");
-//   const [selectedImage, setSelectedImage] = useState(null);
-//   const [imageFile, setImageFile] = useState(null);
-
-//   const [loading, setLoading] = useState(false);
-//   const [error, setError] = useState("");
-//   const [success, setSuccess] = useState("");
-
-//   const categories = ["Travel", "Shopping", "Food", "Entertainment", "Others"];
-
-//   const handleImageUpload = (e) => {
-//     const file = e.target.files[0];
-//     if (file) {
-//       setImageFile(file);
-
-//       const reader = new FileReader();
-//       reader.onload = (e) => setSelectedImage(e.target.result);
-//       reader.readAsDataURL(file);
-//     }
-//   };
-
-//   const handleAddExpense = async () => {
-//     setError("");
-//     setSuccess("");
-//     setLoading(true);
-
-//     try {
-//       let imageUrl = null;
-
-//       // Upload image (if provided)
-//       if (imageFile) {
-//         const imageResponse = await expenseAPI.uploadImage(imageFile);
-//         imageUrl = imageResponse.imageUrl;
-//       }
-
-//       const isTextMode = textEntry.trim().length > 0 && !amount;
-//       if (isTextMode) {
-//         const processed = await expenseAPI.processTextEntry(textEntry);
-//         console.log("Processed AI Response:", processed);
-
-//         // Extract returned array
-//         const items = Array.isArray(processed.parsed)
-//           ? processed.parsed
-//           : [];
-
-//         if (items.length === 0) {
-//           setError("AI could not extract expenses. Enter manually.");
-//           setLoading(false);
-//           return;
-//         }
-
-//         // Add all extracted items
-//         for (const e of items) {
-//           // Normalize timestamp (AI returns YYYY-MM-DD)
-//           let ts = e.timestamp || new Date().toISOString();
-
-//           if (/^\d{4}-\d{2}-\d{2}$/.test(ts)) {
-//             ts += "T00:00:00Z";
-//           }
-
-//           await expenseAPI.addExpense({
-//             amount: parseFloat(e.amount),
-//             category: e.category || "Others",
-//             timestamp: new Date(ts).toISOString(),
-//             description: e.description || "",
-//             source: imageUrl ? "bill_image" : "text_entry",
-//             metadata: {
-//               originalText: textEntry,
-//               imageUrl: imageUrl || null,
-//             },
-//           });
-//         }
-//       }
-
-//       // else {
-//       //   if (!amount || !category || !timestamp) {
-//       //     setError("Please fill in amount, category, and date");
-//       //     setLoading(false);
-//       //     return;
-//       //   }
-//       else {
-//     if (!imageFile && !textEntry) {
-//         if (!amount || !category || !timestamp) {
-//             setError("Please fill in amount, category, and date");
-//             setLoading(false);
-//             return;
-//         }
-//     }
-
-//         await expenseAPI.addExpense({
-//           amount: parseFloat(amount),
-//           category,
-//           // timestamp: new Date(timestamp).toISOString(),
-//           timestamp: timestamp 
-//           ? new Date(timestamp).toISOString()
-//           : new Date().toISOString(),
-//           description,
-//           source: imageUrl ? "bill_image" : "manual_entry",
-//           metadata: imageUrl ? { imageUrl } : {},
-//         });
-//       }
-
-//       setSuccess("Expense added successfully!");
-
-//       setTimeout(() => {
-//         setAmount("");
-//         setCategory("");
-//         setTimestamp("");
-//         setDescription("");
-//         setTextEntry("");
-//         setSelectedImage(null);
-//         setImageFile(null);
-//         setSuccess("");
-//       }, 2000);
-//     } catch (err) {
-//       setError(err.message || "Failed to add expense");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
 import { useState } from "react";
 import { expenseAPI } from "../services/Api";
 
@@ -142,18 +13,8 @@ const AddExpenses = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  
-  const categories = ["Travel", "Shopping", "Food", "Entertainment", "Others"];
 
-  const resetForm = () => {
-    setAmount("");
-    setCategory("");
-    setTimestamp("");
-    setDescription("");
-    setTextEntry("");
-    setSelectedImage(null);
-    setImageFile(null);
-  };
+  const categories = ["Travel", "Shopping", "Food", "Entertainment", "Others"];
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -172,41 +33,33 @@ const AddExpenses = () => {
     setLoading(true);
 
     try {
-      // ------------------------------------------------------------
-      // 1️⃣ BILL IMAGE MODE — backend inserts expenses automatically
-      // ------------------------------------------------------------
+      let imageUrl = null;
+
+      // Upload image (if provided)
       if (imageFile) {
-        const res = await expenseAPI.uploadImage(imageFile);
-
-        if (!res || res.status !== "success") {
-          setError("Failed to process bill.");
-          setLoading(false);
-          return;
-        }
-
-        setSuccess("Bill processed successfully!");
-        resetForm();
-        setLoading(false);
-        return;
+        const imageResponse = await expenseAPI.uploadImage(imageFile);
+        imageUrl = imageResponse.imageUrl;
       }
 
-      // ------------------------------------------------------------
-      // 2️⃣ TEXT → AI EXTRACTION MODE
-      // ------------------------------------------------------------
-      if (textEntry.trim().length > 0 && !amount) {
+      const isTextMode = textEntry.trim().length > 0 && !amount;
+      if (isTextMode) {
         const processed = await expenseAPI.processTextEntry(textEntry);
+        console.log("Processed AI Response:", processed);
 
+        // Extract returned array
         const items = Array.isArray(processed.parsed)
           ? processed.parsed
           : [];
 
         if (items.length === 0) {
-          setError("AI could not extract any expenses.");
+          setError("AI could not extract expenses. Enter manually.");
           setLoading(false);
           return;
         }
 
+        // Add all extracted items
         for (const e of items) {
+          // Normalize timestamp (AI returns YYYY-MM-DD)
           let ts = e.timestamp || new Date().toISOString();
 
           if (/^\d{4}-\d{2}-\d{2}$/.test(ts)) {
@@ -218,43 +71,62 @@ const AddExpenses = () => {
             category: e.category || "Others",
             timestamp: new Date(ts).toISOString(),
             description: e.description || "",
-            source: "text_entry",
-            metadata: { originalText: textEntry },
+            source: imageUrl ? "bill_image" : "text_entry",
+            metadata: {
+              originalText: textEntry,
+              imageUrl: imageUrl || null,
+            },
           });
         }
-
-        setSuccess("AI extracted expenses added!");
-        resetForm();
-        setLoading(false);
-        return;
       }
 
-      // ------------------------------------------------------------
-      // 3️⃣ MANUAL ENTRY MODE
-      // ------------------------------------------------------------
-      if (!amount || !category || !timestamp) {
-        setError("Please fill amount, category and date");
-        setLoading(false);
-        return;
+      // else {
+      //   if (!amount || !category || !timestamp) {
+      //     setError("Please fill in amount, category, and date");
+      //     setLoading(false);
+      //     return;
+      //   }
+      else {
+    if (!imageFile && !textEntry) {
+        if (!amount || !category || !timestamp) {
+            setError("Please fill in amount, category, and date");
+            setLoading(false);
+            return;
+        }
+    }
+
+        await expenseAPI.addExpense({
+          amount: parseFloat(amount),
+          category,
+          // timestamp: new Date(timestamp).toISOString(),
+          timestamp: timestamp 
+          ? new Date(timestamp).toISOString()
+          : new Date().toISOString(),
+          description,
+          source: imageUrl ? "bill_image" : "manual_entry",
+          metadata: imageUrl ? { imageUrl } : {},
+        });
       }
 
-      await expenseAPI.addExpense({
-        amount: parseFloat(amount),
-        category,
-        timestamp: new Date(timestamp).toISOString(),
-        description,
-        source: "manual_entry",
-        metadata: {},
-      });
+      setSuccess("Expense added successfully!");
 
-      setSuccess("Expense added!");
-      resetForm();
+      setTimeout(() => {
+        setAmount("");
+        setCategory("");
+        setTimestamp("");
+        setDescription("");
+        setTextEntry("");
+        setSelectedImage(null);
+        setImageFile(null);
+        setSuccess("");
+      }, 2000);
     } catch (err) {
       setError(err.message || "Failed to add expense");
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="page-wrapper">
