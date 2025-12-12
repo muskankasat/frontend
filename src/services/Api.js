@@ -89,7 +89,7 @@ export const expenseAPI = {
   const response = await fetch("https://ai-finance-tracker-backend-gbum.onrender.com/api/vision/upload-bill", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${getAuthToken()}`  // ✅ backticks used
+      "Authorization": `Bearer ${token}`  // ✅ backticks used
     },
     body: formData
   });
@@ -106,7 +106,7 @@ export const expenseAPI = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getAuthToken()}`,
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ "paragraph": paragraph }),
     });
