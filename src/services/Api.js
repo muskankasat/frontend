@@ -128,6 +128,7 @@ export const dashboardAPI = {
         'Authorization': `Bearer ${getAuthToken()}`,  // FIXED
         'Content-Type': 'application/json',
       },
+      credentials: "include",  // REQUIRED FOR AUTH + CORS
     });
     return handleResponse(response);
   },
@@ -141,6 +142,7 @@ export const dashboardAPI = {
         'Authorization': `Bearer ${getAuthToken()}`,
         'Content-Type': 'application/json',
       },
+      credentials: "include",  // REQUIRED FOR AUTH + CORS
     });
     
     const data = await handleResponse(response);
