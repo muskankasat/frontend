@@ -106,7 +106,7 @@ export const expenseAPI = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${getAuthToken()}`,
       },
       body: JSON.stringify({ "paragraph": paragraph }),
     });
