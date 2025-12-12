@@ -186,7 +186,7 @@ export const insightsAPI = {
 
   // Get recommendations
   getRecommendations: async () => {
-    const response = await fetch(`${API_BASE_URL}/insights/recommendations`, {
+    const response = await fetch(`https://ai-finance-tracker-backend-gbum.onrender.com/api/recommendations`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${getAuthToken()}`,
