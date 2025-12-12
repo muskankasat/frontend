@@ -143,8 +143,6 @@ const AddExpenses = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const categories = ["Travel", "Shopping", "Food", "Entertainment", "Others"];
-
   const resetForm = () => {
     setAmount("");
     setCategory("");
@@ -172,25 +170,36 @@ const AddExpenses = () => {
     setLoading(true);
 
     try {
+      // ------------------------------------------------------------
+      // 1️⃣ BILL IMAGE MODE — backend inserts expenses automatically
+      // ------------------------------------------------------------
       if (imageFile) {
-        await expenseAPI.uploadImage(imageFile);
+        const res = await expenseAPI.uploadImage(imageFile);
 
-        setSuccess("Bill processed and expense added!");
+        if (!res || res.status !== "success") {
+          setError("Failed to process bill.");
+          setLoading(false);
+          return;
+        }
+
+        setSuccess("Bill processed successfully!");
         resetForm();
         setLoading(false);
-        return; // 🚨 DO NOT call addExpense() again!
+        return;
       }
 
-      const isTextMode = textEntry.trim().length > 0 && !amount;
-
-      if (isTextMode) {
+      // ------------------------------------------------------------
+      // 2️⃣ TEXT → AI EXTRACTION MODE
+      // ------------------------------------------------------------
+      if (textEntry.trim().length > 0 && !amount) {
         const processed = await expenseAPI.processTextEntry(textEntry);
+
         const items = Array.isArray(processed.parsed)
           ? processed.parsed
           : [];
 
         if (items.length === 0) {
-          setError("AI could not extract expenses. Enter manually.");
+          setError("AI could not extract any expenses.");
           setLoading(false);
           return;
         }
@@ -198,7 +207,6 @@ const AddExpenses = () => {
         for (const e of items) {
           let ts = e.timestamp || new Date().toISOString();
 
-          // If only YYYY-MM-DD → convert to full ISO
           if (/^\d{4}-\d{2}-\d{2}$/.test(ts)) {
             ts += "T00:00:00Z";
           }
@@ -209,18 +217,21 @@ const AddExpenses = () => {
             timestamp: new Date(ts).toISOString(),
             description: e.description || "",
             source: "text_entry",
-            metadata: { originalText: textEntry }
+            metadata: { originalText: textEntry },
           });
         }
 
-        setSuccess("AI-extracted expenses added!");
+        setSuccess("AI extracted expenses added!");
         resetForm();
         setLoading(false);
         return;
       }
 
+      // ------------------------------------------------------------
+      // 3️⃣ MANUAL ENTRY MODE
+      // ------------------------------------------------------------
       if (!amount || !category || !timestamp) {
-        setError("Please fill in amount, category, and date");
+        setError("Please fill amount, category and date");
         setLoading(false);
         return;
       }
@@ -231,10 +242,10 @@ const AddExpenses = () => {
         timestamp: new Date(timestamp).toISOString(),
         description,
         source: "manual_entry",
-        metadata: {}
+        metadata: {},
       });
 
-      setSuccess("Expense added successfully!");
+      setSuccess("Expense added!");
       resetForm();
     } catch (err) {
       setError(err.message || "Failed to add expense");
