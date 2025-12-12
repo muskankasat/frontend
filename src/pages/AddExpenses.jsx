@@ -142,6 +142,8 @@ const AddExpenses = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  
+  const categories = ["Travel", "Shopping", "Food", "Entertainment", "Others"];
 
   const resetForm = () => {
     setAmount("");
