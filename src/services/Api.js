@@ -135,7 +135,7 @@ export const dashboardAPI = {
   // Get transactions - USING EXPENSES ENDPOINT
   getTransactions: async (filters = {}) => {
     // FIXED: Using /expenses endpoint instead of /dashboard/transactions
-    const response = await fetch(`https://https://ai-finance-tracker-backend-gbum.onrender.com/expenses/list`, {
+    const response = await fetch(`https://ai-finance-tracker-backend-gbum.onrender.com/expenses/list`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${getAuthToken()}`,
