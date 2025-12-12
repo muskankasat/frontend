@@ -195,12 +195,20 @@ const AddExpenses = () => {
         }
       }
 
+      // else {
+      //   if (!amount || !category || !timestamp) {
+      //     setError("Please fill in amount, category, and date");
+      //     setLoading(false);
+      //     return;
+      //   }
       else {
+    if (!imageFile && !textEntry) {
         if (!amount || !category || !timestamp) {
-          setError("Please fill in amount, category, and date");
-          setLoading(false);
-          return;
+            setError("Please fill in amount, category, and date");
+            setLoading(false);
+            return;
         }
+    }
 
         await expenseAPI.addExpense({
           amount: parseFloat(amount),
