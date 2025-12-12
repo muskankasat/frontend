@@ -125,7 +125,7 @@ export const dashboardAPI = {
     const response = await fetch(`https://ai-finance-tracker-backend-gbum.onrender.com/dashboard/summary`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,  // FIXED
+        'Authorization': `Bearer ${getAuthToken()}`,  // FIXED
         'Content-Type': 'application/json',
       },
     });
