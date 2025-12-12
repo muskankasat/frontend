@@ -51,7 +51,7 @@ export const authAPI = {
 export const expenseAPI = {
   // Get all expenses
   getAllExpenses: async () => {
-    const response = await fetch(`${API_BASE_URL}/expenses`, {
+    const response = await fetch(`https://https://ai-finance-tracker-backend-gbum.onrender.com/expenses/list`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${getAuthToken()}`,
@@ -66,7 +66,7 @@ export const expenseAPI = {
     const response = await fetch(`https://ai-finance-tracker-backend-gbum.onrender.com/expenses/add`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${getAuthToken()}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(expenseData),
@@ -125,7 +125,7 @@ export const dashboardAPI = {
     const response = await fetch(`https://ai-finance-tracker-backend-gbum.onrender.com/dashboard/summary`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${getAuthToken()}`,  // FIXED
+        'Authorization': `Bearer ${token}`,  // FIXED
         'Content-Type': 'application/json',
       },
     });
@@ -135,7 +135,7 @@ export const dashboardAPI = {
   // Get transactions - USING EXPENSES ENDPOINT
   getTransactions: async (filters = {}) => {
     // FIXED: Using /expenses endpoint instead of /dashboard/transactions
-    const response = await fetch(`${API_BASE_URL}/expenses`, {
+    const response = await fetch(`https://https://ai-finance-tracker-backend-gbum.onrender.com/expenses/list`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${getAuthToken()}`,
