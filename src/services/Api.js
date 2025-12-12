@@ -47,8 +47,6 @@ export const authAPI = {
   },
 };
 
-// MOCK DATA - Replace these with real API endpoints when backend is ready
-
 // Expense APIs
 export const expenseAPI = {
   // Get all expenses
@@ -75,31 +73,6 @@ export const expenseAPI = {
     });
     return handleResponse(response);
   },
-
-  // Update expense
-  // updateExpense: async (expenseId, expenseData) => {
-  //   const response = await fetch(`${API_BASE_URL}/expenses/${expenseId}`, {
-  //     method: 'PUT',
-  //     headers: {
-  //       'Authorization': `Bearer ${getAuthToken()}`,
-  //       'Content-Type': 'application/json',
-  //     },
-  //     body: JSON.stringify(expenseData),
-  //   });
-  //   return handleResponse(response);
-  // },
-
-  // Delete expense
-  // deleteExpense: async (expenseId) => {
-  //   const response = await fetch(`${API_BASE_URL}/expenses/${expenseId}`, {
-  //     method: 'DELETE',
-  //     headers: {
-  //       'Authorization': `Bearer ${getAuthToken()}`,
-  //       'Content-Type': 'application/json',
-  //     },
-  //   });
-  //   return handleResponse(response);
-  // },
 
   // Upload image
   uploadImage: async (file) => {
@@ -144,35 +117,42 @@ export const expenseAPI = {
   },
 };
 
-// Dashboard APIs
+
+// Dashboard APIs - FIXED VERSION
 export const dashboardAPI = {
   // Get dashboard summary
   getSummary: async () => {
     const response = await fetch(`https://ai-finance-tracker-backend-gbum.onrender.com/dashboard/summary`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${getAuthToken()}`,  // FIXED
         'Content-Type': 'application/json',
       },
     });
     return handleResponse(response);
   },
 
-  // Get transactions
+  // Get transactions - USING EXPENSES ENDPOINT
   getTransactions: async (filters = {}) => {
-    const queryParams = new URLSearchParams();
-    if (filters.category && filters.category !== 'All') {
-      queryParams.append('category', filters.category);
-    }
-    
-    const response = await fetch(`${API_BASE_URL}/dashboard/transactions?${queryParams.toString()}`, {
+    // FIXED: Using /expenses endpoint instead of /dashboard/transactions
+    const response = await fetch(`${API_BASE_URL}/expenses`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${getAuthToken()}`,
         'Content-Type': 'application/json',
       },
     });
-    return handleResponse(response);
+    
+    const data = await handleResponse(response);
+    
+    // Filter on frontend if category filter is applied
+    let transactions = data.expenses || [];
+    
+    if (filters.category && filters.category !== 'All') {
+      transactions = transactions.filter(tx => tx.category === filters.category);
+    }
+    
+    return { transactions };
   },
 };
 
